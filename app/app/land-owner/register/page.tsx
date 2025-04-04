@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import FileUpload from "@/components/file-upload"
 import Link from "next/link"
 
+
 type FormData = {
     fullName: string
     nin: string

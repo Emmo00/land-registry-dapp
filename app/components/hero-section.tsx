@@ -46,7 +46,7 @@ export default function HeroSection() {
                         <Button
                             variant="outline"
                             size="lg"
-                            className="text-lg px-8 py-6 border-2 text-white hover:bg-white/10 transition-colors"
+                            className="text-lg px-8 py-6 border-2 bg- text-white hover:bg-white/10 transition-colors"
                         >
                             Register Land Ownership
                         </Button>
