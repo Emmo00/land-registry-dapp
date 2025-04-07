@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
+import CheckLandOwnershipButton from "./buttons/CheckLandOwnershipButton"
+import RegisterLandOwnershipButton from "./buttons/RegisterLandOwnershipButton"
 
 export default function HeroSection() {
     return (
@@ -36,21 +38,8 @@ export default function HeroSection() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6, duration: 0.8 }}
                 >
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                        <Button size="lg" className="text-lg px-8 py-6 bg-emerald-600 hover:bg-emerald-500 transition-colors">
-                            Check Land Ownership
-                        </Button>
-                    </motion.div>
-
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            className="text-lg px-8 py-6 border-2 bg- text-white hover:bg-white/10 transition-colors"
-                        >
-                            Register Land Ownership
-                        </Button>
-                    </motion.div>
+                    <CheckLandOwnershipButton />
+                    <RegisterLandOwnershipButton />
                 </motion.div>
             </div>
         </motion.section>

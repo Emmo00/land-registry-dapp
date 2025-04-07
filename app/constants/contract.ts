@@ -1,0 +1,600 @@
+export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
+export const CONTRACT_ABI = [
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_adminPublicKey",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "inputs": [],
+        "name": "ECDSAInvalidSignature",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "length",
+                "type": "uint256"
+            }
+        ],
+        "name": "ECDSAInvalidSignatureLength",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "s",
+                "type": "bytes32"
+            }
+        ],
+        "name": "ECDSAInvalidSignatureS",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            }
+        ],
+        "name": "OwnableInvalidOwner",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "account",
+                "type": "address"
+            }
+        ],
+        "name": "OwnableUnauthorizedAccount",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "ReentrancyGuardReentrantCall",
+        "type": "error"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "newAdminPublicKey",
+                "type": "address"
+            }
+        ],
+        "name": "AdminPublicKeyUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "plotNumber",
+                "type": "string"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            }
+        ],
+        "name": "LandRegistered",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "plotNumber",
+                "type": "string"
+            },
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "reason",
+                "type": "string"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "official",
+                "type": "address"
+            }
+        ],
+        "name": "LandRejected",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "string",
+                "name": "plotNumber",
+                "type": "string"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "official",
+                "type": "address"
+            }
+        ],
+        "name": "LandVerified",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "official",
+                "type": "address"
+            }
+        ],
+        "name": "OfficialLoggedIn",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "official",
+                "type": "address"
+            }
+        ],
+        "name": "OfficialLoggedOut",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "previousOwner",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "newOwner",
+                "type": "address"
+            }
+        ],
+        "name": "OwnershipTransferred",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "proofHash",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            }
+        ],
+        "name": "ProofGenerated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "proofHash",
+                "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "verifier",
+                "type": "address"
+            }
+        ],
+        "name": "ProofUsed",
+        "type": "event"
+    },
+    {
+        "inputs": [],
+        "name": "adminPublicKey",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_landId",
+                "type": "uint256"
+            }
+        ],
+        "name": "generateProof",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "string",
+                "name": "_plotNumber",
+                "type": "string"
+            }
+        ],
+        "name": "getLandByPlotNumber",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "internalType": "string",
+                "name": "plotNumber",
+                "type": "string"
+            },
+            {
+                "internalType": "uint256",
+                "name": "landSize",
+                "type": "uint256"
+            },
+            {
+                "internalType": "string",
+                "name": "gpsCoordinates",
+                "type": "string"
+            },
+            {
+                "internalType": "enum LandRegistry.VerificationStatus",
+                "name": "status",
+                "type": "uint8"
+            },
+            {
+                "internalType": "string",
+                "name": "rejectionReason",
+                "type": "string"
+            },
+            {
+                "internalType": "string",
+                "name": "encryptedTitleDeedHash",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "governmentOfficials",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "lands",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "internalType": "string",
+                "name": "plotNumber",
+                "type": "string"
+            },
+            {
+                "internalType": "uint256",
+                "name": "landSize",
+                "type": "uint256"
+            },
+            {
+                "internalType": "string",
+                "name": "gpsCoordinates",
+                "type": "string"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "hashedNIN",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "witnessNIN",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "string",
+                "name": "encryptedTitleDeedHash",
+                "type": "string"
+            },
+            {
+                "internalType": "enum LandRegistry.VerificationStatus",
+                "name": "status",
+                "type": "uint8"
+            },
+            {
+                "internalType": "string",
+                "name": "rejectionReason",
+                "type": "string"
+            },
+            {
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "_messageHash",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes",
+                "name": "_signature",
+                "type": "bytes"
+            }
+        ],
+        "name": "loginOfficial",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "logoutOfficial",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "string",
+                "name": "_plotNumber",
+                "type": "string"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_landSize",
+                "type": "uint256"
+            },
+            {
+                "internalType": "string",
+                "name": "_gpsCoordinates",
+                "type": "string"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "_hashedNIN",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes32",
+                "name": "_witnessNIN",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "string",
+                "name": "_encryptedTitleDeedHash",
+                "type": "string"
+            }
+        ],
+        "name": "registerLand",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_landId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "string",
+                "name": "_reason",
+                "type": "string"
+            }
+        ],
+        "name": "rejectLand",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "renounceOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_adminPublicKey",
+                "type": "address"
+            }
+        ],
+        "name": "setAdminPublicKey",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "newOwner",
+                "type": "address"
+            }
+        ],
+        "name": "transferOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_landId",
+                "type": "uint256"
+            }
+        ],
+        "name": "verifyLand",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "_proofHash",
+                "type": "bytes32"
+            }
+        ],
+        "name": "verifyProof",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "internalType": "string",
+                "name": "plotNumber",
+                "type": "string"
+            },
+            {
+                "internalType": "uint256",
+                "name": "landSize",
+                "type": "uint256"
+            },
+            {
+                "internalType": "string",
+                "name": "gpsCoordinates",
+                "type": "string"
+            },
+            {
+                "internalType": "string",
+                "name": "encryptedTitleDeedHash",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+];
