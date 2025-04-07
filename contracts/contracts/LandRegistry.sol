@@ -93,8 +93,7 @@ contract LandRegistry is Ownable, ReentrancyGuard {
     ) external {
         require(adminPublicKey != address(0), "Admin public key not set");
         require(
-            _messageHash.toEthSignedMessageHash().recover(_signature) ==
-                adminPublicKey,
+            _messageHash.recover(_signature) == adminPublicKey,
             "Invalid signature"
         );
         governmentOfficials[msg.sender] = true;
