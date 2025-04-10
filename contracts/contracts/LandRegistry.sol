@@ -18,11 +18,13 @@ contract LandRegistry is Ownable, ReentrancyGuard {
 
     struct LandRecord {
         uint256 id;
-        string plotNumber;
-        uint256 landSize;
-        string gpsCoordinates;
+        string ownerFullName;
         bytes32 hashedNIN;
-        bytes32 witnessNIN;
+        string plotNumber;
+        uint256 landSize; // acre * 100000 (10e5)
+        string gpsCoordinates;
+        string witnessFullName;
+        bytes32 witnessHashedNIN;
         string encryptedTitleDeedHash;
         VerificationStatus status;
         string rejectionReason;
@@ -33,7 +35,7 @@ contract LandRegistry is Ownable, ReentrancyGuard {
     mapping(string => uint256) private plotNumberToId;
     mapping(address => bool) public governmentOfficials;
     mapping(bytes32 => uint256) private proofToLandId;
-    address public adminPublicKey;
+    string public adminPublicKey;
 
     event LandRegistered(
         uint256 indexed id,
@@ -61,7 +63,7 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         bytes32 proofHash,
         address indexed verifier
     );
-    event AdminPublicKeyUpdated(address indexed newAdminPublicKey);
+    event AdminPublicKeyUpdated(string indexed newAdminPublicKey);
     event OfficialLoggedIn(address indexed official);
     event OfficialLoggedOut(address indexed official);
 
@@ -78,11 +80,13 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(address _adminPublicKey) Ownable(msg.sender) {
+    constructor(string memory _adminPublicKey) Ownable(msg.sender) {
         adminPublicKey = _adminPublicKey;
     }
 
-    function setAdminPublicKey(address _adminPublicKey) external onlyOwner {
+    function setAdminPublicKey(
+        string memory _adminPublicKey
+    ) external onlyOwner {
         adminPublicKey = _adminPublicKey;
         emit AdminPublicKeyUpdated(_adminPublicKey);
     }
@@ -91,9 +95,12 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         bytes32 _messageHash,
         bytes memory _signature
     ) external {
-        require(adminPublicKey != address(0), "Admin public key not set");
         require(
-            _messageHash.recover(_signature) == adminPublicKey,
+            keccak256(bytes(adminPublicKey)) != keccak256(""),
+            "Admin public key not set"
+        );
+        require(
+            _messageHash.recover(_signature) == address(uint160(uint256(keccak256(abi.encodePacked(adminPublicKey))))),
             "Invalid signature"
         );
         governmentOfficials[msg.sender] = true;
@@ -111,8 +118,10 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         uint256 _landSize,
         string memory _gpsCoordinates,
         bytes32 _hashedNIN,
-        bytes32 _witnessNIN,
-        string memory _encryptedTitleDeedHash
+        bytes32 _witnessHashedNIN,
+        string memory _encryptedTitleDeedHash,
+        string memory _ownerFullName,
+        string memory _witnessFullName
     ) external nonReentrant {
         require(
             plotNumberToId[_plotNumber] == 0,
@@ -128,11 +137,13 @@ contract LandRegistry is Ownable, ReentrancyGuard {
             landSize: _landSize,
             gpsCoordinates: _gpsCoordinates,
             hashedNIN: _hashedNIN,
-            witnessNIN: _witnessNIN,
+            witnessHashedNIN: _witnessHashedNIN,
             encryptedTitleDeedHash: _encryptedTitleDeedHash,
             status: VerificationStatus.Pending,
             rejectionReason: "",
-            owner: msg.sender
+            owner: msg.sender,
+            ownerFullName: _ownerFullName,
+            witnessFullName: _witnessFullName
         });
 
         plotNumberToId[_plotNumber] = landId;

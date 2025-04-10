@@ -1,7 +1,9 @@
 {
     "cSpell.words": [
+        "IPFS",
         "rainbowkit",
         "Reentrancy",
+        "viem",
         "wagmi"
     ]
 }
