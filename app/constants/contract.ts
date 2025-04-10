@@ -12,33 +12,6 @@ export const CONTRACT_ABI = [
         "type": "constructor"
     },
     {
-        "inputs": [],
-        "name": "ECDSAInvalidSignature",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "length",
-                "type": "uint256"
-            }
-        ],
-        "name": "ECDSAInvalidSignatureLength",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "s",
-                "type": "bytes32"
-            }
-        ],
-        "name": "ECDSAInvalidSignatureS",
-        "type": "error"
-    },
-    {
         "inputs": [
             {
                 "internalType": "address",
@@ -169,7 +142,7 @@ export const CONTRACT_ABI = [
                 "type": "address"
             }
         ],
-        "name": "OfficialLoggedIn",
+        "name": "OfficialAdded",
         "type": "event"
     },
     {
@@ -182,7 +155,7 @@ export const CONTRACT_ABI = [
                 "type": "address"
             }
         ],
-        "name": "OfficialLoggedOut",
+        "name": "OfficialRemoved",
         "type": "event"
     },
     {
@@ -253,6 +226,19 @@ export const CONTRACT_ABI = [
         ],
         "name": "ProofUsed",
         "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_official",
+                "type": "address"
+            }
+        ],
+        "name": "addOfficial",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
         "inputs": [],
@@ -601,31 +587,6 @@ export const CONTRACT_ABI = [
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "_messageHash",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "bytes",
-                "name": "_signature",
-                "type": "bytes"
-            }
-        ],
-        "name": "loginOfficial",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "logoutOfficial",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
         "inputs": [],
         "name": "owner",
         "outputs": [
@@ -690,6 +651,19 @@ export const CONTRACT_ABI = [
         "type": "function"
     },
     {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_official",
+                "type": "address"
+            }
+        ],
+        "name": "removeOfficial",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
         "inputs": [],
         "name": "renounceOwnership",
         "outputs": [],
@@ -746,32 +720,65 @@ export const CONTRACT_ABI = [
         "name": "verifyProof",
         "outputs": [
             {
-                "internalType": "uint256",
-                "name": "id",
-                "type": "uint256"
-            },
-            {
-                "internalType": "string",
-                "name": "plotNumber",
-                "type": "string"
-            },
-            {
-                "internalType": "uint256",
-                "name": "landSize",
-                "type": "uint256"
-            },
-            {
-                "internalType": "string",
-                "name": "gpsCoordinates",
-                "type": "string"
-            },
-            {
-                "internalType": "string",
-                "name": "encryptedTitleDeedHash",
-                "type": "string"
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "id",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "ownerFullName",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "plotNumber",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "landSize",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "gpsCoordinates",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "encryptedTitleDeedHash",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "enum LandRegistry.VerificationStatus",
+                        "name": "status",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "rejectionReason",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "owner",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "timestamp",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct LandRegistry.LandRecord",
+                "name": "",
+                "type": "tuple"
             }
         ],
         "stateMutability": "nonpayable",
         "type": "function"
     }
-]
+];
+export const LAND_SIZE_DECIMALS = 5;

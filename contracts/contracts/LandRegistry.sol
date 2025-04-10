@@ -63,8 +63,8 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         address indexed verifier
     );
     event AdminPublicKeyUpdated(string indexed newAdminPublicKey);
-    event OfficialLoggedIn(address indexed official);
-    event OfficialLoggedOut(address indexed official);
+    event OfficialAdded(address indexed official);
+    event OfficialRemoved(address indexed official);
 
     modifier onlyOfficial() {
         require(
@@ -80,42 +80,27 @@ contract LandRegistry is Ownable, ReentrancyGuard {
     }
 
     constructor(string memory _adminPublicKey) Ownable(msg.sender) {
-        adminPublicKey = _adminPublicKey;
+        adminPublicKey = _adminPublicKey; // Set the admin public key
+        _landIdCounter = new Counter(); // Initialize the counter
+        _landIdCounter.increment(); // Start the counter at 1
+        governmentOfficials[msg.sender] = true; // Add the contract deployer as an official
     }
 
     function setAdminPublicKey(
         string memory _adminPublicKey
     ) external onlyOwner {
         adminPublicKey = _adminPublicKey;
-_landIdCounter = new Counter(); // Initialize the counter
         emit AdminPublicKeyUpdated(_adminPublicKey);
     }
 
-    function loginOfficial(
-        bytes32 _messageHash,
-        bytes memory _signature
-    ) external {
-        require(
-            keccak256(bytes(adminPublicKey)) != keccak256(""),
-            "Admin public key not set"
-        );
-        require(
-            _messageHash.recover(_signature) ==
-                address(
-                    uint160(
-                        uint256(keccak256(abi.encodePacked(adminPublicKey)))
-                    )
-                ),
-            "Invalid signature"
-        );
-        governmentOfficials[msg.sender] = true;
-        emit OfficialLoggedIn(msg.sender);
+    function addOfficial(address _official) external onlyOwner {
+        governmentOfficials[_official] = true;
+        emit OfficialAdded(_official);
     }
 
-    function logoutOfficial() external {
-        require(governmentOfficials[msg.sender], "Not logged in");
-        governmentOfficials[msg.sender] = false;
-        emit OfficialLoggedOut(msg.sender);
+    function removeOfficial(address _official) external onlyOwner {
+        governmentOfficials[_official] = false;
+        emit OfficialRemoved(_official);
     }
 
     function registerLand(
@@ -218,16 +203,7 @@ _landIdCounter = new Counter(); // Initialize the counter
 
     function verifyProof(
         bytes32 _proofHash
-    )
-        external
-        returns (
-            uint256 id,
-            string memory plotNumber,
-            uint256 landSize,
-            string memory gpsCoordinates,
-            string memory encryptedTitleDeedHash
-        )
-    {
+    ) external returns (LandRecord memory) {
         uint256 landId = proofToLandId[_proofHash];
         require(landId != 0, "Invalid or already used proof");
         LandRecord memory land = lands[landId];
@@ -235,13 +211,7 @@ _landIdCounter = new Counter(); // Initialize the counter
         delete proofToLandId[_proofHash]; // Invalidate proof after use
         emit ProofUsed(landId, _proofHash, msg.sender);
 
-        return (
-            land.id,
-            land.plotNumber,
-            land.landSize,
-            land.gpsCoordinates,
-            land.encryptedTitleDeedHash
-        );
+        return land;
     }
 
     function getLandById(

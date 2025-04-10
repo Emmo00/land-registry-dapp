@@ -11,19 +11,8 @@ import { ConnectButton, useConnectModal } from '@rainbow-me/rainbowkit';
 import { useAccount, useReadContract } from 'wagmi';
 import { useRouter } from 'next/navigation';
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
-
-type LandRecordType = {
-    id: number;
-    ownerFullName: string;
-    plotNumber: string;
-    landSize: number;
-    gpsCoordinates: string;
-    encryptedTitleDeedHash: string;
-    rejectionReason: string;
-    owner: string;
-    status: string;
-    timestamp: number;
-}
+import { LabelToVerificationStatus } from "@/constants/abstract"
+import { type LandRecordType } from "../../../types"
 
 // Mock data for demonstration
 const mockSubmissions = [
@@ -63,13 +52,13 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS,
         functionName: 'getLandsByOwner',
         args: [address],
-    });
+    }).data as unknown as LandRecordType[];
 
-    console.log(submissions.data);
+    console.log(submissions);
 
     // Filter submissions based on active tab
     const filteredSubmissions =
-        activeTab === "all" ? mockSubmissions : mockSubmissions.filter((submission) => submission.status === activeTab)
+        (activeTab === "all" ? submissions : submissions?.filter((submission) => submission.status === LabelToVerificationStatus[activeTab])) || [];
 
     function handleOnClick() {
         // if wallet not connected, open connect modal

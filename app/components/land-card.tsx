@@ -2,18 +2,14 @@
 
 import { motion } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, MapPin } from "lucide-react"
-
-type Submission = {
-    id: string
-    plotNumber: string
-    landSize: string
-    status: string
-    submissionDate: string
-}
+import { Calendar, MapPin, Ruler } from "lucide-react"
+import { VerificationStatusToLabel } from "@/constants/abstract"
+import { type LandRecordType } from "@/types"
+import { LAND_SIZE_DECIMALS } from "@/constants/contract"
+import { parseDDAndConvertToDMS } from "@/utils/conversions"
 
 type LandCardProps = {
-    submission: Submission
+    submission: LandRecordType
 }
 
 export default function LandCard({ submission }: LandCardProps) {
@@ -25,8 +21,8 @@ export default function LandCard({ submission }: LandCardProps) {
     }
 
     // Format date to be more readable
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString("en-US", {
+    const formatDate = (timestamp: number) => {
+        return new Date(Date(timestamp)).toLocaleDateString("en-US", {
             year: "numeric",
             month: "short",
             day: "numeric",
@@ -45,19 +41,23 @@ export default function LandCard({ submission }: LandCardProps) {
             <div className="p-5">
                 <div className="flex justify-between items-start mb-3">
                     <h3 className="font-medium text-slate-800">{submission.plotNumber}</h3>
-                    <Badge className={statusColors[submission.status as keyof typeof statusColors]}>
-                        {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+                    <Badge className={statusColors[VerificationStatusToLabel[submission.status] as keyof typeof statusColors]}>
+                        {VerificationStatusToLabel[submission.status].charAt(0).toUpperCase() + VerificationStatusToLabel[submission.status].slice(1)}
                     </Badge>
                 </div>
 
                 <div className="flex items-center text-slate-600 mb-2">
                     <MapPin className="h-4 w-4 mr-2" />
-                    <span className="text-sm">{submission.landSize}</span>
+                    <span className="text-sm">{parseDDAndConvertToDMS(submission.gpsCoordinates)}</span>
+                </div>
+                <div className="flex items-center text-slate-600 mb-2">
+                    <Ruler className="h-4 w-4 mr-2" />
+                    <span className="text-sm">{(submission.landSize / BigInt(10 ** LAND_SIZE_DECIMALS)).toString()} acres</span>
                 </div>
 
                 <div className="flex items-center text-slate-500">
                     <Calendar className="h-4 w-4 mr-2" />
-                    <span className="text-xs">Submitted on {formatDate(submission.submissionDate)}</span>
+                    <span className="text-xs">Submitted on {formatDate(Number(submission.timestamp))}</span>
                 </div>
             </div>
         </motion.div>
