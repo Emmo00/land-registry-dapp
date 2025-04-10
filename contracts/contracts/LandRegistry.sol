@@ -87,6 +87,7 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         string memory _adminPublicKey
     ) external onlyOwner {
         adminPublicKey = _adminPublicKey;
+_landIdCounter = new Counter(); // Initialize the counter
         emit AdminPublicKeyUpdated(_adminPublicKey);
     }
 
