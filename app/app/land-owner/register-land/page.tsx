@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useState } from "react"
 import { useForm } from "react-hook-form"
@@ -11,8 +11,11 @@ import { Label } from "@/components/ui/label"
 import { Loader2, ArrowLeft, Check } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import FileUpload from "@/components/file-upload"
-import Link from "next/link"
-
+import Link from "next/link";
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/constants/contract";
+import { useWriteContract, useReadContract, useAccount } from "wagmi";
+import EthCrypto from "eth-crypto";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 type FormData = {
     fullName: string
@@ -24,16 +27,123 @@ type FormData = {
     witnessNin: string
 }
 
+function convertDecimalToDMS(decimal: number): string {
+    const deg = Math.floor(Math.abs(decimal));
+    const minFloat = (Math.abs(decimal) - deg) * 60;
+    const min = Math.floor(minFloat);
+    const sec = ((minFloat - min) * 60).toFixed(2);
+
+    return `${deg}° ${min}' ${sec}" ${decimal >= 0 ? 'N' : 'S'}`;
+}
+
+function parseDDAndConvertToDMS(input: string): string | null {
+    if (!input) return null;
+    input = input.trim();
+    const parts = input.split(',').map((part) => part.trim());
+    if (parts.length !== 2) return null;
+
+    const [latStr, lngStr] = parts;
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+
+    const isValidLat = !isNaN(lat) && lat >= -90 && lat <= 90;
+    const isValidLng = !isNaN(lng) && lng >= -180 && lng <= 180;
+
+    if (!isValidLat || !isValidLng) return null;
+
+    return `${convertDecimalToDMS(lat)} ${convertDecimalToDMS(lng).replace('N', 'E').replace('S', 'W')}`;
+}
+
+function isValidDDLocation(input: string): boolean {
+    if (!input || typeof input !== 'string') return false;
+
+    if (input.includes('°') || input.includes('E') || input.includes('N')) return false;
+
+    const parts = input.trim().split(',').map(part => part.trim());
+    if (parts.length !== 2) return false;
+
+    const [latStr, lngStr] = parts;
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+
+    const isValidLat = !isNaN(lat) && lat >= -90 && lat <= 90;
+    const isValidLng = !isNaN(lng) && lng >= -180 && lng <= 180;
+
+    return isValidLat && isValidLng;
+}
+
+
+
 export default function RegisterLand() {
     const { toast } = useToast()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [file, setFile] = useState<File | null>(null)
 
+    const { isConnected: isWalletConnected } = useAccount();
+    const { openConnectModal: openWalletConnectModal } = useConnectModal();
+
+    const ADMIN_PUBLIC_KEY = useReadContract({
+        abi: CONTRACT_ABI,
+        address: CONTRACT_ADDRESS,
+        functionName: "adminPublicKey",
+    }).data as string;
+
+    console.log(ADMIN_PUBLIC_KEY)
     const {
         register,
+        watch,
         handleSubmit,
         formState: { errors },
     } = useForm<FormData>()
+
+    // Initialize useWriteContract.
+    const { writeContract } = useWriteContract();
+
+    // Helper to encrypt strings (file content) with the admin's public key.
+    async function encryptWithAdminPublicKey(message: string): Promise<string> {
+        const encryptedObject = await EthCrypto.encryptWithPublicKey(ADMIN_PUBLIC_KEY, message)
+        return EthCrypto.cipher.stringify(encryptedObject)
+    }
+
+    // Helper to upload content to IPFS.
+    async function uploadToIPFS(file: File): Promise<string> {
+        const formData = new FormData();
+
+        formData.set('file', file);
+
+        const uploadRequest = await fetch("/api/files", {
+            method: "POST",
+            body: formData,
+        });
+        const cid = await uploadRequest.json();
+
+        console.log("file cid", cid);
+
+        return cid;
+    }
+
+    // Process file: read it, encrypt with admin public key and upload to IPFS.
+    async function processFileEncryption(file: File): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = async () => {
+                try {
+                    // Read file content as text (or you can convert to base64 if needed).
+                    const fileContent = reader.result as string
+                    // Encrypt content.
+                    const encrypted = await encryptWithAdminPublicKey(fileContent)
+                    // Upload encrypted content to IPFS.
+                    const cid = await uploadToIPFS(new File([encrypted], file.name, { type: file.type }));
+                    resolve(cid)
+                } catch (error) {
+                    reject(error)
+                }
+            }
+            reader.onerror = reject
+            reader.readAsText(file)
+            
+        })
+    }
 
     const onSubmit = async (data: FormData) => {
         if (!file) {
@@ -44,24 +154,74 @@ export default function RegisterLand() {
             })
             return
         }
-
         setIsSubmitting(true)
 
-        // Simulate blockchain submission
-        await new Promise((resolve) => setTimeout(resolve, 2000))
+        try {
+            // check if wallet is connected
+            if (!isWalletConnected) {
+                openWalletConnectModal?.();
+                setIsSubmitting(false);
+                return;
+            }
 
-        toast({
-            title: "Success!",
-            description: "Your land registration has been submitted to the blockchain",
-            action: (
-                <div className="h-8 w-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <Check className="h-5 w-5 text-emerald-600" />
-                </div>
-            ),
-        })
 
-        setIsSubmitting(false)
+            // 2. Encrypt and upload the title deed/certificate file.
+            const encryptedFileCID = await processFileEncryption(file)
+
+            // 3. Prepare contract call arguments.
+            // The order of parameters in the contract:
+            // _plotNumber, _landSize, _gpsCoordinates, _hashedNIN, _witnessHashedNIN, _encryptedTitleDeedHash, _ownerFullName, _witnessFullName
+            const args = [
+                data.plotNumber,
+                Number(data.landSize) * 10e5,
+                data.gpsCoordinates,
+                encryptedFileCID, // IPFS CID of the encrypted file.
+                data.fullName,
+            ]
+
+            console.log(args);
+
+            // 4. Execute the contract write using useWriteContract's async function.
+            writeContract({
+                abi: CONTRACT_ABI,
+                address: CONTRACT_ADDRESS,
+                functionName: "registerLand",
+                args: args,
+            }, {
+                onSuccess: () => {
+                    toast({
+                        title: "Success!",
+                        description: "Your land registration has been submitted to the blockchain",
+                        action: (
+                            <div className="h-8 w-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                                <Check className="h-5 w-5 text-emerald-600" />
+                            </div>
+                        ),
+                    })
+                    setIsSubmitting(false);
+                },
+
+                onError: (error) => {
+                    console.error("Error registering land:", error)
+                    toast({
+                        title: "Registration Failed",
+                        description: error?.message || "Something went wrong while registering your land",
+                        variant: "destructive",
+                    })
+                    setIsSubmitting(false);
+                }
+            })
+        } catch (error: any) {
+            console.error("Error preparing registering land:", error)
+            toast({
+                title: "Submitting Registration Failed",
+                description: error?.message || "Something went wrong while registering your land",
+                variant: "destructive",
+            })
+            setIsSubmitting(false);
+        }
     }
+
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -87,7 +247,7 @@ export default function RegisterLand() {
                     transition={{ duration: 0.5 }}
                     className="mb-6"
                 >
-                    <Link href="/dashboard" className="inline-flex items-center text-slate-600 hover:text-slate-900">
+                    <Link href="/land-owner/dashboard" className="inline-flex items-center text-slate-600 hover:text-slate-900">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back to Dashboard
                     </Link>
@@ -122,18 +282,6 @@ export default function RegisterLand() {
                                 {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName.message}</p>}
                             </motion.div>
 
-                            <motion.div variants={itemVariants} className="space-y-2">
-                                <Label htmlFor="nin">National Identification Number (NIN)</Label>
-                                <Input
-                                    id="nin"
-                                    placeholder="Enter your NIN"
-                                    {...register("nin", { required: "NIN is required" })}
-                                    className={errors.nin ? "border-red-300" : ""}
-                                />
-                                <p className="text-xs text-slate-500">Will be hashed before storing</p>
-                                {errors.nin && <p className="text-red-500 text-sm">{errors.nin.message}</p>}
-                            </motion.div>
-
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <motion.div variants={itemVariants} className="space-y-2">
                                     <Label htmlFor="plotNumber">Plot Number</Label>
@@ -147,10 +295,10 @@ export default function RegisterLand() {
                                 </motion.div>
 
                                 <motion.div variants={itemVariants} className="space-y-2">
-                                    <Label htmlFor="landSize">Land Size</Label>
+                                    <Label htmlFor="landSize">Land Size (acres)</Label>
                                     <Input
                                         id="landSize"
-                                        placeholder="e.g., 2.5 acres"
+                                        placeholder="e.g., 2.5"
                                         {...register("landSize", { required: "Land size is required" })}
                                         className={errors.landSize ? "border-red-300" : ""}
                                     />
@@ -159,36 +307,22 @@ export default function RegisterLand() {
                             </div>
 
                             <motion.div variants={itemVariants} className="space-y-2">
-                                <Label htmlFor="gpsCoordinates">GPS Coordinates</Label>
+                                <Label htmlFor="gpsCoordinates">GPS Coordinates (Decimal Degrees)</Label>
                                 <Input
                                     id="gpsCoordinates"
-                                    placeholder="e.g., 40.7128° N, 74.0060° W"
+                                    placeholder="e.g., -1.2921, 36.8219"
                                     {...register("gpsCoordinates", { required: "GPS coordinates are required" })}
                                     className={errors.gpsCoordinates ? "border-red-300" : ""}
                                 />
+                                <p className="text-xs pl-2 text-slate-500">{isValidDDLocation(watch('gpsCoordinates')) && parseDDAndConvertToDMS(watch('gpsCoordinates'))}</p>
+                                <p className="text-red-500 text-sm mt-1">{isValidDDLocation(watch('gpsCoordinates')) ? "" : "Invalid GPS Location"}</p>
                                 {errors.gpsCoordinates && <p className="text-red-500 text-sm mt-1">{errors.gpsCoordinates.message}</p>}
-                            </motion.div>
-
-                            <motion.div variants={itemVariants}>
-                                <h3 className="text-lg font-medium mb-4">Witness Information (Optional)</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="witnessName">Witness Name</Label>
-                                        <Input id="witnessName" placeholder="Enter witness name" {...register("witnessName")} />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="witnessNin">Witness NIN</Label>
-                                        <Input id="witnessNin" placeholder="Enter witness NIN" {...register("witnessNin")} />
-                                        <p className="text-xs text-slate-500">Will be hashed before storing</p>
-                                    </div>
-                                </div>
                             </motion.div>
 
                             <motion.div variants={itemVariants} className="space-y-2">
                                 <Label>Upload Title Deed or Certificate of Occupancy</Label>
                                 <FileUpload file={file} setFile={setFile} />
-                                <p className="text-xs text-slate-500">Encrypted before being stored on Web3</p>
+                                <p className="text-xs text-slate-500">Encrypted before being stored on the blockchain</p>
                             </motion.div>
                         </motion.form>
                     </CardContent>

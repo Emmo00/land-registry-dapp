@@ -7,6 +7,23 @@ import { Button } from "@/components/ui/button"
 import { LogOut, Plus } from "lucide-react"
 import EmptyState from "@/components/empty-state"
 import LandCard from "@/components/land-card"
+import { ConnectButton, useConnectModal } from '@rainbow-me/rainbowkit';
+import { useAccount, useReadContract } from 'wagmi';
+import { useRouter } from 'next/navigation';
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
+
+type LandRecordType = {
+    id: number;
+    ownerFullName: string;
+    plotNumber: string;
+    landSize: number;
+    gpsCoordinates: string;
+    encryptedTitleDeedHash: string;
+    rejectionReason: string;
+    owner: string;
+    status: string;
+    timestamp: number;
+}
 
 // Mock data for demonstration
 const mockSubmissions = [
@@ -31,21 +48,37 @@ const mockSubmissions = [
         status: "rejected",
         submissionDate: "2023-12-05",
     },
-    {
-        id: "4",
-        plotNumber: "PLT-2023-004",
-        landSize: "3.0 acres",
-        status: "pending",
-        submissionDate: "2023-12-18",
-    },
 ]
 
 export default function Dashboard() {
-    const [activeTab, setActiveTab] = useState("all")
+    const [activeTab, setActiveTab] = useState("all");
+    const { openConnectModal } = useConnectModal();
+    const { isConnected, } = useAccount();
+    const router = useRouter();
+    const { address, } = useAccount();
+
+    // get land submissions from contract
+    const submissions = useReadContract({
+        abi: CONTRACT_ABI,
+        address: CONTRACT_ADDRESS,
+        functionName: 'getLandsByOwner',
+        args: [address],
+    });
+
+    console.log(submissions.data);
 
     // Filter submissions based on active tab
     const filteredSubmissions =
         activeTab === "all" ? mockSubmissions : mockSubmissions.filter((submission) => submission.status === activeTab)
+
+    function handleOnClick() {
+        // if wallet not connected, open connect modal
+        if (!isConnected) {
+            openConnectModal?.()
+        }
+        // navigate to register land ownership page
+        router.push('/land-owner/register-land');
+    }
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -58,7 +91,7 @@ export default function Dashboard() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
                     >
-                        Welcome back, John Doe
+                        Welcome back, Land Owner!
                     </motion.h1>
 
                     <motion.div
@@ -67,11 +100,7 @@ export default function Dashboard() {
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2, duration: 0.5 }}
                     >
-                        <span className="hidden md:inline text-sm text-slate-500 mr-2">0x71C...8Fe3</span>
-                        <Button variant="ghost" size="icon">
-                            <LogOut className="h-5 w-5" />
-                            <span className="sr-only">Log out</span>
-                        </Button>
+                        <ConnectButton showBalance={false} />
                     </motion.div>
                 </div>
             </header>
@@ -86,7 +115,9 @@ export default function Dashboard() {
                     transition={{ duration: 0.5 }}
                 >
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-6 h-auto rounded-lg shadow-md transition-all hover:shadow-lg hover:shadow-emerald-200">
+                        <Button
+                            onClick={handleOnClick}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-6 h-auto rounded-lg shadow-md transition-all hover:shadow-lg hover:shadow-emerald-200">
                             <Plus className="mr-2 h-5 w-5" />
                             Register New Land Ownership
                         </Button>

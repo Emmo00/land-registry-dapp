@@ -14,7 +14,7 @@ export default function RegisterLandOwnershipButton() {
 
     function handleOnClick() {
         if (!isConnected) {
-            openConnectModal?.();
+            openConnectModal?.()
         }
 
         router.push('/land-owner/dashboard');
@@ -23,6 +23,7 @@ export default function RegisterLandOwnershipButton() {
     return (
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
+                onClick={handleOnClick}
                 variant="outline"
                 size="lg"
                 className="text-lg px-8 py-6 border-2 bg- text-white hover:bg-white/10 transition-colors"

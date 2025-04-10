@@ -19,19 +19,18 @@ contract LandRegistry is Ownable, ReentrancyGuard {
     struct LandRecord {
         uint256 id;
         string ownerFullName;
-        bytes32 hashedNIN;
         string plotNumber;
         uint256 landSize; // acre * 100000 (10e5)
         string gpsCoordinates;
-        string witnessFullName;
-        bytes32 witnessHashedNIN;
         string encryptedTitleDeedHash;
         VerificationStatus status;
         string rejectionReason;
         address owner;
+        uint256 timestamp;
     }
 
     mapping(uint256 => LandRecord) public lands;
+    mapping(address => uint256[]) public landIdsByOwner;
     mapping(string => uint256) private plotNumberToId;
     mapping(address => bool) public governmentOfficials;
     mapping(bytes32 => uint256) private proofToLandId;
@@ -100,7 +99,12 @@ contract LandRegistry is Ownable, ReentrancyGuard {
             "Admin public key not set"
         );
         require(
-            _messageHash.recover(_signature) == address(uint160(uint256(keccak256(abi.encodePacked(adminPublicKey))))),
+            _messageHash.recover(_signature) ==
+                address(
+                    uint160(
+                        uint256(keccak256(abi.encodePacked(adminPublicKey)))
+                    )
+                ),
             "Invalid signature"
         );
         governmentOfficials[msg.sender] = true;
@@ -117,11 +121,8 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         string memory _plotNumber,
         uint256 _landSize,
         string memory _gpsCoordinates,
-        bytes32 _hashedNIN,
-        bytes32 _witnessHashedNIN,
         string memory _encryptedTitleDeedHash,
-        string memory _ownerFullName,
-        string memory _witnessFullName
+        string memory _ownerFullName
     ) external nonReentrant {
         require(
             plotNumberToId[_plotNumber] == 0,
@@ -136,19 +137,40 @@ contract LandRegistry is Ownable, ReentrancyGuard {
             plotNumber: _plotNumber,
             landSize: _landSize,
             gpsCoordinates: _gpsCoordinates,
-            hashedNIN: _hashedNIN,
-            witnessHashedNIN: _witnessHashedNIN,
             encryptedTitleDeedHash: _encryptedTitleDeedHash,
             status: VerificationStatus.Pending,
             rejectionReason: "",
             owner: msg.sender,
             ownerFullName: _ownerFullName,
-            witnessFullName: _witnessFullName
+            timestamp: block.timestamp
         });
 
         plotNumberToId[_plotNumber] = landId;
+        landIdsByOwner[msg.sender].push(landId);
 
         emit LandRegistered(landId, _plotNumber, msg.sender);
+    }
+
+    function getLandsByOwner(
+        address _owner
+    ) external view returns (LandRecord[] memory) {
+        uint256[] memory ownerLandIds = landIdsByOwner[_owner];
+
+        // load land record details
+        LandRecord[] memory ownerLands = new LandRecord[](ownerLandIds.length);
+        for (uint256 i = 0; i < ownerLandIds.length; i++) {
+            ownerLands[i] = lands[ownerLandIds[i]];
+        }
+        return ownerLands;
+    }
+
+    function getAllLands() external view returns (LandRecord[] memory) {
+        uint256 totalLands = _landIdCounter.current();
+        LandRecord[] memory allLands = new LandRecord[](totalLands);
+        for (uint256 i = 1; i <= totalLands; i++) {
+            allLands[i - 1] = lands[i];
+        }
+        return allLands;
     }
 
     function verifyLand(uint256 _landId) external onlyOfficial {
@@ -221,32 +243,9 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         );
     }
 
-    function getLandByPlotNumber(
-        string memory _plotNumber
-    )
-        external
-        view
-        returns (
-            uint256 id,
-            string memory plotNumber,
-            uint256 landSize,
-            string memory gpsCoordinates,
-            VerificationStatus status,
-            string memory rejectionReason,
-            string memory encryptedTitleDeedHash
-        )
-    {
-        uint256 landId = plotNumberToId[_plotNumber];
-        require(landId != 0, "Land record not found");
-        LandRecord memory land = lands[landId];
-        return (
-            land.id,
-            land.plotNumber,
-            land.landSize,
-            land.gpsCoordinates,
-            land.status,
-            land.rejectionReason,
-            land.encryptedTitleDeedHash
-        );
+    function getLandById(
+        uint256 _landId
+    ) external view returns (LandRecord memory) {
+        return lands[_landId];
     }
 }

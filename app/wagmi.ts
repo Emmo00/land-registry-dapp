@@ -6,6 +6,7 @@ import {
     metis,
     metisSepolia,
 } from 'wagmi/chains';
+import { http } from 'viem';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -13,6 +14,7 @@ export const config = getDefaultConfig({
     appName: 'Land Registry',
     projectId: 'YOUR_PROJECT_ID',
     chains: isProd ? [metis] : [metisSepolia],
+    transports: { [metisSepolia.id]: http('https://metis-sepolia-rpc.publicnode.com') },
     ssr: true, // If your dApp uses server side rendering (SSR)
 });
 

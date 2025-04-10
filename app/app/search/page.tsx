@@ -16,7 +16,7 @@ import Link from "next/link"
 const mockRecords = [
     {
         id: "1",
-        plotNumber: "PLT-2023-001",
+        proof: "PLT-2023-001",
         landSize: "2.5 acres",
         gpsCoordinates: "0.3476° N, 32.5825° E",
         ownerName: "John Doe",
@@ -26,7 +26,7 @@ const mockRecords = [
     },
     {
         id: "2",
-        plotNumber: "PLT-2023-002",
+        proof: "PLT-2023-002",
         landSize: "4.2 acres",
         gpsCoordinates: "0.3157° N, 32.6012° E",
         ownerName: "Jane Smith",
@@ -36,7 +36,7 @@ const mockRecords = [
     },
     {
         id: "3",
-        plotNumber: "PLT-2023-003",
+        proof: "PLT-2023-003",
         landSize: "1.8 acres",
         gpsCoordinates: "0.3290° N, 32.5710° E",
         ownerName: "Robert Johnson",
@@ -47,9 +47,7 @@ const mockRecords = [
 ]
 
 type SearchFormData = {
-    plotNumber: string
-    gpsCoordinates: string
-    ownerName: string
+    proof: string
 }
 
 type LandRecord = {
@@ -65,9 +63,7 @@ type LandRecord = {
 
 export default function SearchPage() {
     const [formData, setFormData] = useState<SearchFormData>({
-        plotNumber: "",
-        gpsCoordinates: "",
-        ownerName: "",
+        proof: "",
     })
     const [searchResults, setSearchResults] = useState<LandRecord[] | null>(null)
     const [isSearching, setIsSearching] = useState(false)
@@ -88,8 +84,8 @@ export default function SearchPage() {
         setHasSearched(true)
 
         // Validate that at least one field has input
-        if (!formData.plotNumber && !formData.gpsCoordinates && !formData.ownerName) {
-            setError("Please enter at least one search criteria")
+        if (!formData.proof) {
+            setError("Please enter ownership proof.")
             setIsSearching(false)
             setSearchResults(null)
             return
@@ -100,16 +96,8 @@ export default function SearchPage() {
 
         // Filter mock data based on search criteria
         const results = mockRecords.filter((record) => {
-            const plotMatch = formData.plotNumber
-                ? record.plotNumber.toLowerCase().includes(formData.plotNumber.toLowerCase())
-                : true
-
-            const gpsMatch = formData.gpsCoordinates
-                ? record.gpsCoordinates.toLowerCase().includes(formData.gpsCoordinates.toLowerCase())
-                : true
-
-            const ownerMatch = formData.ownerName
-                ? record.ownerName.toLowerCase().includes(formData.ownerName.toLowerCase())
+            const plotMatch = formData.proof
+                ? record.proof.toLowerCase().includes(formData.proof.toLowerCase())
                 : true
 
             return plotMatch && gpsMatch && ownerMatch
@@ -154,9 +142,9 @@ export default function SearchPage() {
                     transition={{ duration: 0.5 }}
                     className="text-center mb-10"
                 >
-                    <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">Land Ownership Search</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">Land Ownership Verification</h1>
                     <p className="text-slate-500 max-w-2xl mx-auto">
-                        Search for verified land ownership records using plot number, GPS coordinates, or owner's name
+                        Enter proof sent to you by the owner of the land to verify ownership.
                     </p>
                 </motion.div>
 
@@ -168,56 +156,20 @@ export default function SearchPage() {
                 >
                     <form onSubmit={handleSearch} className="space-y-6">
                         <motion.div variants={itemVariants} className="space-y-2">
-                            <Label htmlFor="plotNumber" className="text-slate-700">
-                                Plot Number
+                            <Label htmlFor="proof" className="text-slate-700">
+                                Enter Proof
                             </Label>
                             <div className="relative">
                                 <Input
-                                    id="plotNumber"
-                                    name="plotNumber"
-                                    placeholder="e.g., PLT-2023-001"
-                                    value={formData.plotNumber}
+                                    id="proof"
+                                    name="proof"
+                                    placeholder="XXXXXXXXXXXXXXXXXXXXXXXXXX"
+                                    value={formData.proof}
                                     onChange={handleInputChange}
                                     onKeyDown={handleKeyDown}
                                     className="pl-10"
                                 />
                                 <FileText className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
-                            </div>
-                        </motion.div>
-
-                        <motion.div variants={itemVariants} className="space-y-2">
-                            <Label htmlFor="gpsCoordinates" className="text-slate-700">
-                                GPS Coordinates
-                            </Label>
-                            <div className="relative">
-                                <Input
-                                    id="gpsCoordinates"
-                                    name="gpsCoordinates"
-                                    placeholder="e.g., 0.3476° N, 32.5825° E"
-                                    value={formData.gpsCoordinates}
-                                    onChange={handleInputChange}
-                                    onKeyDown={handleKeyDown}
-                                    className="pl-10"
-                                />
-                                <MapPin className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
-                            </div>
-                        </motion.div>
-
-                        <motion.div variants={itemVariants} className="space-y-2">
-                            <Label htmlFor="ownerName" className="text-slate-700">
-                                Owner's Name
-                            </Label>
-                            <div className="relative">
-                                <Input
-                                    id="ownerName"
-                                    name="ownerName"
-                                    placeholder="e.g., John Doe"
-                                    value={formData.ownerName}
-                                    onChange={handleInputChange}
-                                    onKeyDown={handleKeyDown}
-                                    className="pl-10"
-                                />
-                                <User className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
                             </div>
                         </motion.div>
 
@@ -259,7 +211,7 @@ export default function SearchPage() {
                                 ) : (
                                     <div className="flex items-center justify-center">
                                         <SearchIcon className="mr-2 h-5 w-5" />
-                                        Search Land Records
+                                        Verify Ownership
                                     </div>
                                 )}
                             </Button>
@@ -292,7 +244,7 @@ export default function SearchPage() {
                                         <Card key={record.id} className="overflow-hidden">
                                             <CardContent className="p-6">
                                                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                                                    <h3 className="text-lg font-medium text-slate-800">Plot {record.plotNumber}</h3>
+                                                    <h3 className="text-lg font-medium text-slate-800">Plot {record.proof}</h3>
                                                     <div className="mt-2 md:mt-0">
                                                         {record.verified ? (
                                                             <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">

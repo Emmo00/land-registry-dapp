@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -15,9 +14,9 @@ export default function CheckLandOwnershipButton() {
     function handleOnClick() {
         if (!isConnected) {
             openConnectModal?.();
+        } else {
+            router.push('/search');
         }
-
-        router.push('/search');
     }
     return (
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>

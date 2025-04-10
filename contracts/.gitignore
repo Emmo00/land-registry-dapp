@@ -15,3 +15,5 @@ node_modules
 
 # Hardhat Ignition default folder for deployments against a local node
 ignition/deployments/chain-31337
+
+"b3dbc5eaaeb39a79523cc096a350e5980358af72507024be10b5101f71cc80aee9e25177738d32782ffb3b30d86cf7a2d571192b170de2c03006469e5ec617d077cfc49020ea0dac0910b70f66ce6eb0072de27e57bc7626b8205e5368886d7b72"

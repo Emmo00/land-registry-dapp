@@ -1,5 +1,5 @@
-const { Wallet } = require("ethers");
+const EthCrypto = require('eth-crypto')
 
-const wallet = Wallet.createRandom();
+const wallet = EthCrypto.createIdentity();
 console.log("Private Key:", wallet.privateKey);
-console.log("Public Key:", wallet.address); // This will be used in the smart contract
+console.log("Public Key:", wallet.publicKey); // This will be used in the smart contract
