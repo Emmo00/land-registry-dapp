@@ -200,17 +200,19 @@ contract LandRegistry is Ownable, ReentrancyGuard {
         return proofHash;
     }
 
-    function verifyProof(
+    function checkProof(
         bytes32 _proofHash
-    ) external returns (LandRecord memory) {
+    ) external view returns (LandRecord memory) {
+        uint256 landId = proofToLandId[_proofHash];
+        require(landId != 0, "Invalid or non-existent proof");
+        return lands[landId];
+    }
+
+    function verifyProof(bytes32 _proofHash) external {
         uint256 landId = proofToLandId[_proofHash];
         require(landId != 0, "Invalid or already used proof");
-        LandRecord memory land = lands[landId];
-
         delete proofToLandId[_proofHash]; // Invalidate proof after use
         emit ProofUsed(landId, _proofHash, msg.sender);
-
-        return land;
     }
 
     function getLandById(

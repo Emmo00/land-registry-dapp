@@ -258,6 +258,77 @@ export const CONTRACT_ABI = [
     {
         "inputs": [
             {
+                "internalType": "bytes32",
+                "name": "_proofHash",
+                "type": "bytes32"
+            }
+        ],
+        "name": "checkProof",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "uint256",
+                        "name": "id",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "ownerFullName",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "plotNumber",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "landSize",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "gpsCoordinates",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "encryptedTitleDeedHash",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "enum LandRegistry.VerificationStatus",
+                        "name": "status",
+                        "type": "uint8"
+                    },
+                    {
+                        "internalType": "string",
+                        "name": "rejectionReason",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "owner",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "timestamp",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct LandRegistry.LandRecord",
+                "name": "",
+                "type": "tuple"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "uint256",
                 "name": "_landId",
                 "type": "uint256"
@@ -720,65 +791,7 @@ export const CONTRACT_ABI = [
             }
         ],
         "name": "verifyProof",
-        "outputs": [
-            {
-                "components": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "ownerFullName",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "plotNumber",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "landSize",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "gpsCoordinates",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "encryptedTitleDeedHash",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "enum LandRegistry.VerificationStatus",
-                        "name": "status",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "string",
-                        "name": "rejectionReason",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "address",
-                        "name": "owner",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "timestamp",
-                        "type": "uint256"
-                    }
-                ],
-                "internalType": "struct LandRegistry.LandRecord",
-                "name": "",
-                "type": "tuple"
-            }
-        ],
+        "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
     }
