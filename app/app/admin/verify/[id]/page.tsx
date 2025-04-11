@@ -19,13 +19,14 @@ import { getExtensionFromFileName } from "@/utils/misc"
 import { Toaster } from "@/components/ui/toaster"
 
 
-export default function VerifyRequest({ params }: { params: { id: string } }) {
+export default function VerifyRequest({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter()
     let [request, setRequest] = useState<LandRecordType>();
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [rejectionReason, setRejectionReason] = useState<string>("")
-    const [isRejectionReasonVisible, setIsRejectionReasonVisible] = useState(false)
+    const [isRejectionReasonVisible, setIsRejectionReasonVisible] = useState(false);
+    const [isProcessingImage, setIsProcessingImage] = useState(false);
     const landRequest = useReadContract({
         abi: CONTRACT_ABI,
         address: CONTRACT_ADDRESS,
@@ -128,6 +129,7 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
     }
 
     const handleDocumentDownload = async () => {
+        setIsProcessingImage(true);
         try {
             // Get encrypted file from IPFS
             const formData = new FormData();
@@ -138,6 +140,7 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
             });
 
             if (!fetchResponse.ok) {
+                setIsProcessingImage(false);
                 throw new Error("Failed to fetch file URL");
             }
 
@@ -146,6 +149,7 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
             // Fetch the file from the URL
             const fileResponse = await fetch(url);
             if (!fileResponse.ok) {
+                setIsProcessingImage(false);
                 throw new Error("Failed to fetch file");
             }
 
@@ -186,7 +190,10 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
             link.download = `${request?.plotNumber}_${request?.ownerFullName}.${getExtensionFromFileName(decryptedFile.name)}`;
             link.click();
             URL.revokeObjectURL(link.href);
+            setIsProcessingImage(false);
         } catch (error) {
+            setIsProcessingImage(false);
+            // Handle error
             console.error("Error downloading document:", error);
             alert("Failed to download the document. Please try again.");
         }
@@ -322,8 +329,10 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
                                                     <FileText className="h-5 w-5 text-slate-400 mr-2" />
                                                     {/* <span className="text-sm">land_title_document.pdf</span> */}
                                                 </div>
-                                                <Button onClick={handleDocumentDownload} variant="outline" size="sm">
-                                                    View Document
+                                                <Button onClick={handleDocumentDownload}
+                                                    disabled={isProcessingImage}
+                                                    variant="outline" size="sm">
+                                                    {isProcessingImage ? "Processing Image" : "View Document"}
                                                 </Button>
                                             </div>
                                         </div>
