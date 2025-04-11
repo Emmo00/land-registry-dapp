@@ -1,3 +1,5 @@
+import { LAND_SIZE_DECIMALS } from "@/constants/contract";
+
 function convertDecimalToDMS(decimal: number): string {
     const deg = Math.floor(Math.abs(decimal));
     const minFloat = (Math.abs(decimal) - deg) * 60;
@@ -41,4 +43,21 @@ export function isValidDDLocation(input: string): boolean {
     const isValidLng = !isNaN(lng) && lng >= -180 && lng <= 180;
 
     return isValidLat && isValidLng;
+}
+
+// Format date to be more readable
+export const formatDate = (timestamp: number | bigint) => {
+    if (typeof timestamp === 'bigint') {
+        timestamp = Number(timestamp);
+    }
+
+    return new Date(Date(timestamp)).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    })
+}
+
+export function normalizeAcreAmount(acre: bigint) {
+    return Number(acre) / (10 ** LAND_SIZE_DECIMALS);
 }

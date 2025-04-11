@@ -10,90 +10,40 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useReadContract } from "wagmi"
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
+import { LandRecordType } from "@/types"
+import { VerificationStatusToLabel } from "@/constants/abstract"
+import { formatDate, normalizeAcreAmount, parseDDAndConvertToDMS } from "@/utils/conversions"
 
-// Mock data for demonstration
-const mockRequests = [
-    {
-        id: "1",
-        ownerName: "John Doe",
-        plotNumber: "PLT-2023-001",
-        landSize: "2.5 acres",
-        gpsCoordinates: "0.3476° N, 32.5825° E",
-        submissionDate: "2023-12-15",
-        status: "pending",
-    },
-    {
-        id: "2",
-        ownerName: "Jane Smith",
-        plotNumber: "PLT-2023-002",
-        landSize: "4.2 acres",
-        gpsCoordinates: "0.3157° N, 32.6012° E",
-        submissionDate: "2023-11-28",
-        status: "approved",
-    },
-    {
-        id: "3",
-        ownerName: "Robert Johnson",
-        plotNumber: "PLT-2023-003",
-        landSize: "1.8 acres",
-        gpsCoordinates: "0.3290° N, 32.5710° E",
-        submissionDate: "2023-12-05",
-        status: "rejected",
-    },
-    {
-        id: "4",
-        ownerName: "Sarah Williams",
-        plotNumber: "PLT-2023-004",
-        landSize: "3.0 acres",
-        gpsCoordinates: "0.3412° N, 32.5901° E",
-        submissionDate: "2023-12-18",
-        status: "pending",
-    },
-    {
-        id: "5",
-        ownerName: "Michael Brown",
-        plotNumber: "PLT-2023-005",
-        landSize: "5.7 acres",
-        gpsCoordinates: "0.3501° N, 32.5750° E",
-        submissionDate: "2023-12-10",
-        status: "pending",
-    },
-    {
-        id: "6",
-        ownerName: "Emily Davis",
-        plotNumber: "PLT-2023-006",
-        landSize: "2.2 acres",
-        gpsCoordinates: "0.3320° N, 32.5880° E",
-        submissionDate: "2023-12-07",
-        status: "approved",
-    },
-]
-
-type LandRequest = {
-    id: string
-    ownerName: string
-    plotNumber: string
-    landSize: string
-    gpsCoordinates: string
-    submissionDate: string
-    status: "pending" | "approved" | "rejected"
-}
 
 export default function GovernmentDashboard() {
     const router = useRouter()
     const [searchTerm, setSearchTerm] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("all")
-    const [sortField, setSortField] = useState<keyof LandRequest | null>(null)
+    const [sortField, setSortField] = useState<keyof LandRecordType | null>(null)
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-    const [filteredRequests, setFilteredRequests] = useState<LandRequest[]>(mockRequests)
+    let results = useReadContract({
+        abi: CONTRACT_ABI,
+        address: CONTRACT_ADDRESS,
+        functionName: "getAllLands",
+    }).data as unknown as LandRecordType[] || []
+    const [filteredRequests, setFilteredRequests] = useState<LandRecordType[]>(results)
+
+    console.log("Land Records: ", results)
+
+    useEffect(() => {
+        // Filter and sort requests when the component mounts
+        setFilteredRequests(results)
+    });
+
 
     // Filter and sort requests based on search term and status filter
     useEffect(() => {
-        let results = mockRequests
 
         // Apply status filter
         if (statusFilter !== "all") {
-            results = results.filter((request) => request.status === statusFilter)
+            results = results.filter((request) => VerificationStatusToLabel[request.status] === statusFilter)
         }
 
         // Apply search filter
@@ -101,7 +51,7 @@ export default function GovernmentDashboard() {
             const term = searchTerm.toLowerCase()
             results = results.filter(
                 (request) =>
-                    request.ownerName.toLowerCase().includes(term) ||
+                    request.ownerFullName.toLowerCase().includes(term) ||
                     request.plotNumber.toLowerCase().includes(term) ||
                     request.gpsCoordinates.toLowerCase().includes(term),
             )
@@ -114,9 +64,33 @@ export default function GovernmentDashboard() {
                 const bValue = b[sortField]
 
                 if (sortDirection === "asc") {
-                    return aValue.localeCompare(bValue)
+                    if (typeof aValue === "number" && typeof bValue === "number") {
+                        return aValue - bValue
+                    }
+
+                    if (typeof aValue === "bigint" && typeof bValue === "bigint") {
+                        return Number(aValue) - Number(bValue)
+                    }
+
+                    if (typeof aValue === "string" && typeof bValue === "string") {
+                        return aValue.localeCompare(bValue)
+                    }
+
+                    return 0
                 } else {
-                    return bValue.localeCompare(aValue)
+                    if (typeof aValue === "number" && typeof bValue === "number") {
+                        return bValue - aValue
+                    }
+
+                    if (typeof aValue === "bigint" && typeof bValue === "bigint") {
+                        return Number(bValue) - Number(aValue)
+                    }
+
+                    if (typeof aValue === "string" && typeof bValue === "string") {
+                        return bValue.localeCompare(aValue)
+                    }
+
+                    return 0
                 }
             })
         }
@@ -124,7 +98,7 @@ export default function GovernmentDashboard() {
         setFilteredRequests(results)
     }, [searchTerm, statusFilter, sortField, sortDirection])
 
-    const handleSort = (field: keyof LandRequest) => {
+    const handleSort = (field: keyof LandRecordType) => {
         if (sortField === field) {
             setSortDirection(sortDirection === "asc" ? "desc" : "asc")
         } else {
@@ -133,17 +107,8 @@ export default function GovernmentDashboard() {
         }
     }
 
-    const handleViewRequest = (id: string) => {
+    const handleViewRequest = (id: bigint) => {
         router.push(`/admin/verify/${id}`)
-    }
-
-    // Format date to be more readable
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-        })
     }
 
     // Get status badge color
@@ -248,10 +213,10 @@ export default function GovernmentDashboard() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="cursor-pointer hover:bg-slate-50" onClick={() => handleSort("ownerName")}>
+                                <TableHead className="cursor-pointer hover:bg-slate-50" onClick={() => handleSort("ownerFullName")}>
                                     <div className="flex items-center">
                                         Owner Name
-                                        {sortField === "ownerName" &&
+                                        {sortField === "ownerFullName" &&
                                             (sortDirection === "asc" ? (
                                                 <ChevronUp className="ml-1 h-4 w-4" />
                                             ) : (
@@ -270,12 +235,12 @@ export default function GovernmentDashboard() {
                                             ))}
                                     </div>
                                 </TableHead>
-                                <TableHead>Land Size</TableHead>
+                                <TableHead>Land Size(acres)</TableHead>
                                 <TableHead>GPS Coordinates</TableHead>
-                                <TableHead className="cursor-pointer hover:bg-slate-50" onClick={() => handleSort("submissionDate")}>
+                                <TableHead className="cursor-pointer hover:bg-slate-50" onClick={() => handleSort("timestamp")}>
                                     <div className="flex items-center">
                                         Submission Date
-                                        {sortField === "submissionDate" &&
+                                        {sortField === "timestamp" &&
                                             (sortDirection === "asc" ? (
                                                 <ChevronUp className="ml-1 h-4 w-4" />
                                             ) : (
@@ -301,14 +266,14 @@ export default function GovernmentDashboard() {
                             {filteredRequests.length > 0 ? (
                                 filteredRequests.map((request) => (
                                     <motion.tr key={request.id} variants={itemVariants} className="border-b hover:bg-slate-50">
-                                        <TableCell className="font-medium">{request.ownerName}</TableCell>
+                                        <TableCell className="font-medium">{request.ownerFullName}</TableCell>
                                         <TableCell>{request.plotNumber}</TableCell>
-                                        <TableCell>{request.landSize}</TableCell>
-                                        <TableCell className="max-w-[200px] truncate" title={request.gpsCoordinates}>
+                                        <TableCell>{normalizeAcreAmount(request.landSize)}</TableCell>
+                                        <TableCell className="max-w-[200px] truncate" title={parseDDAndConvertToDMS(request.gpsCoordinates)}>
                                             {request.gpsCoordinates}
                                         </TableCell>
-                                        <TableCell>{formatDate(request.submissionDate)}</TableCell>
-                                        <TableCell>{getStatusBadge(request.status)}</TableCell>
+                                        <TableCell>{formatDate(request.timestamp)}</TableCell>
+                                        <TableCell>{getStatusBadge(VerificationStatusToLabel[request.status])}</TableCell>
                                         <TableCell>
                                             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                                 <Button
@@ -343,27 +308,27 @@ export default function GovernmentDashboard() {
                                     <CardContent className="p-0">
                                         <div className="p-4 border-b border-slate-100 flex justify-between items-center">
                                             <div>
-                                                <h3 className="font-medium">{request.ownerName}</h3>
+                                                <h3 className="font-medium">{request.ownerFullName}</h3>
                                                 <p className="text-sm text-slate-500">{request.plotNumber}</p>
                                             </div>
-                                            {getStatusBadge(request.status)}
+                                            {getStatusBadge(VerificationStatusToLabel[request.status])}
                                         </div>
 
                                         <div className="p-4 space-y-2">
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
-                                                    <p className="text-xs text-slate-500">Land Size</p>
-                                                    <p className="text-sm">{request.landSize}</p>
+                                                    <p className="text-xs text-slate-500">Land Size(acres)</p>
+                                                    <p className="text-sm">{normalizeAcreAmount(request.landSize)}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-xs text-slate-500">Submission Date</p>
-                                                    <p className="text-sm">{formatDate(request.submissionDate)}</p>
+                                                    <p className="text-sm">{formatDate(request.timestamp)}</p>
                                                 </div>
                                             </div>
 
                                             <div>
                                                 <p className="text-xs text-slate-500">GPS Coordinates</p>
-                                                <p className="text-sm truncate">{request.gpsCoordinates}</p>
+                                                <p className="text-sm truncate">{parseDDAndConvertToDMS(request.gpsCoordinates)}</p>
                                             </div>
 
                                             <motion.div className="pt-2" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>

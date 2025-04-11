@@ -6,7 +6,7 @@ import { Calendar, MapPin, Ruler } from "lucide-react"
 import { VerificationStatusToLabel } from "@/constants/abstract"
 import { type LandRecordType } from "@/types"
 import { LAND_SIZE_DECIMALS } from "@/constants/contract"
-import { parseDDAndConvertToDMS } from "@/utils/conversions"
+import { parseDDAndConvertToDMS, formatDate } from "@/utils/conversions"
 
 type LandCardProps = {
     submission: LandRecordType
@@ -18,15 +18,6 @@ export default function LandCard({ submission }: LandCardProps) {
         pending: "bg-amber-100 text-amber-800 hover:bg-amber-100",
         approved: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
         rejected: "bg-red-100 text-red-800 hover:bg-red-100",
-    }
-
-    // Format date to be more readable
-    const formatDate = (timestamp: number) => {
-        return new Date(Date(timestamp)).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-        })
     }
 
     return (

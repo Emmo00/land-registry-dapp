@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -9,46 +9,16 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, AlertCircle, Wallet, Key, ShieldCheck } from "lucide-react"
+import EthCrypto from "eth-crypto";
+import { useAccount, useReadContract } from "wagmi"
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
+import { useConnectModal } from "@rainbow-me/rainbowkit"
+import { Address } from "viem"
 
-// Mock function to simulate wallet connection
-const connectWallet = async (): Promise<{ address: string; success: boolean }> => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // Simulate successful connection 90% of the time
-    if (Math.random() > 0.1) {
-        // Generate a random Ethereum address
-        const address = "0x" + [...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join("")
-        return { address, success: true }
-    }
-
-    return { address: "", success: false }
-}
-
-// Mock function to check if wallet has admin privileges
-const checkAdminPrivileges = async (address: string): Promise<boolean> => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // For demo purposes, let's say addresses starting with 0x0 are admins
-    return address.startsWith("0x0")
-}
-
-// Mock function to validate private key
-const validatePrivateKey = async (privateKey: string): Promise<boolean> => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // For demo purposes, let's say a private key is valid if it's 64 characters long
-    // and contains only hexadecimal characters
-    const isValidFormat = /^[0-9a-fA-F]{64}$/.test(privateKey)
-
-    return isValidFormat
-}
 
 export default function LoginPage() {
     const router = useRouter()
-    const [walletAddress, setWalletAddress] = useState<string>("")
+    const [walletAddress, setWalletAddress] = useState<Address>();
     const [isConnecting, setIsConnecting] = useState<boolean>(false)
     const [isCheckingAdmin, setIsCheckingAdmin] = useState<boolean>(false)
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
@@ -56,36 +26,68 @@ export default function LoginPage() {
     const [privateKey, setPrivateKey] = useState<string>("")
     const [isValidatingKey, setIsValidatingKey] = useState<boolean>(false)
     const [error, setError] = useState<string | null>(null)
-    const [privateKeyError, setPrivateKeyError] = useState<boolean>(false)
+    const [privateKeyError, setPrivateKeyError] = useState<boolean>(false);
+    const [awaitingConnection, setAwaitingConnection] = useState<boolean>(false)
+
+    const { openConnectModal } = useConnectModal();
+    const { address, isConnected } = useAccount();
+
+    const ADMIN_PUBLIC_KEY = useReadContract({
+        abi: CONTRACT_ABI,
+        address: CONTRACT_ADDRESS,
+        functionName: "adminPublicKey",
+    }).data as string;
+
+    const userHasOfficialPrivileges = useReadContract({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: "governmentOfficials",
+        args: [address],
+    }).data as unknown as boolean
+
+    const checkAdminPrivileges = async (address: Address): Promise<boolean> => {
+        return userHasOfficialPrivileges;
+    }
+
+    const validatePrivateKey = async (privateKey: string, publicKey: string): Promise<boolean> => {
+        const encryptedMessage = await EthCrypto.encryptWithPublicKey(publicKey, "hi");
+        const decryptedMessage = await EthCrypto.decryptWithPrivateKey(privateKey, encryptedMessage);
+
+        return decryptedMessage === "hi";
+    }
 
     const handleWalletConnect = async () => {
         setError(null)
         setIsConnecting(true)
 
         try {
-            const { address, success } = await connectWallet()
-
-            if (success) {
-                setWalletAddress(address)
+            // Open wallet connection modal if not connected
+            if (!isConnected) {
+                openConnectModal?.()
+                setAwaitingConnection(true)
                 setIsConnecting(false)
-                setIsCheckingAdmin(true)
+                return
+            }
 
-                // Check if wallet has admin privileges
-                const hasAdminPrivileges = await checkAdminPrivileges(address)
-                setIsAdmin(hasAdminPrivileges)
-                setIsCheckingAdmin(false)
+            setWalletAddress(address)
+            setIsConnecting(false)
+            setIsCheckingAdmin(true)
 
-                if (hasAdminPrivileges) {
-                    // Redirect to dashboard if admin
-                    setTimeout(() => router.push("/dashboard"), 1000)
-                } else {
-                    // Show private key input if not admin
-                    setShowPrivateKeyInput(true)
-                }
+            // Check if wallet has admin privileges
+            const hasAdminPrivileges = await checkAdminPrivileges(address!)
+            console.log("Admin Privileges: ", hasAdminPrivileges)
+
+            setIsAdmin(hasAdminPrivileges)
+            setIsCheckingAdmin(false)
+
+            if (hasAdminPrivileges) {
+                setShowPrivateKeyInput(true)
             } else {
-                throw new Error("Failed to connect wallet")
+                // show error
+                setError("This wallet does not have admin privileges.")
             }
         } catch (err) {
+            console.error(err);
             setError("Failed to connect wallet. Please try again.")
             setIsConnecting(false)
         }
@@ -97,11 +99,15 @@ export default function LoginPage() {
         setIsValidatingKey(true)
 
         try {
-            const isValid = await validatePrivateKey(privateKey)
+            const isValid = await validatePrivateKey(privateKey, ADMIN_PUBLIC_KEY)
+
+            console.log("Private Key Valid: ", isValid);
 
             if (isValid) {
+                // store private key in session storage
+                sessionStorage.setItem("privateKey", privateKey)
                 // Redirect to dashboard if private key is valid
-                setTimeout(() => router.push("/dashboard"), 1000)
+                setTimeout(() => router.push("/admin/dashboard"), 0)
             } else {
                 setPrivateKeyError(true)
                 setError("Invalid private key. Please try again.")
@@ -126,7 +132,7 @@ export default function LoginPage() {
                     <CardHeader className="space-y-1">
                         <CardTitle className="text-2xl font-bold text-center">Land Verification Login</CardTitle>
                         <CardDescription className="text-center">
-                            Connect your wallet or use your private key to access the system
+                            Connect your wallet, then enter your private key to access the system
                         </CardDescription>
                     </CardHeader>
 
@@ -152,7 +158,7 @@ export default function LoginPage() {
                                     ) : isAdmin === true ? (
                                         <>
                                             <ShieldCheck className="mr-2 h-5 w-5" />
-                                            Access Granted! Redirecting...
+                                            Has Access!
                                         </>
                                     ) : (
                                         <>
@@ -199,9 +205,9 @@ export default function LoginPage() {
                                 >
                                     <div className="text-center">
                                         <p className="text-sm text-slate-500">
-                                            This wallet doesn't have admin privileges.
+                                            This wallet have admin privileges.
                                             <br />
-                                            Please authenticate with your private key.
+                                            Please your private key for decrypting messages.
                                         </p>
                                     </div>
 
@@ -239,7 +245,7 @@ export default function LoginPage() {
                                             ) : (
                                                 <>
                                                     <Key className="mr-2 h-4 w-4" />
-                                                    Login with Private Key
+                                                    Continue
                                                 </>
                                             )}
                                         </Button>
