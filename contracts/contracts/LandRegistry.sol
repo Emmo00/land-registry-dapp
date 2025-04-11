@@ -114,7 +114,6 @@ contract LandRegistry is Ownable, ReentrancyGuard {
             "Plot number already registered"
         );
 
-        _landIdCounter.increment();
         uint256 landId = _landIdCounter.current();
 
         lands[landId] = LandRecord({
@@ -130,6 +129,7 @@ contract LandRegistry is Ownable, ReentrancyGuard {
             timestamp: block.timestamp
         });
 
+        _landIdCounter.increment();
         plotNumberToId[_plotNumber] = landId;
         landIdsByOwner[msg.sender].push(landId);
 

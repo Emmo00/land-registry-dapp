@@ -17,6 +17,8 @@ import { useWriteContract, useReadContract, useAccount } from "wagmi";
 import EthCrypto from "eth-crypto";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { parseDDAndConvertToDMS, isValidDDLocation } from "@/utils/conversions";
+import { randomBytes } from "crypto";
+import { encryptFileWithPublicKey } from "@/utils/crypto";
 
 type FormData = {
     fullName: string
@@ -43,6 +45,7 @@ export default function RegisterLand() {
     }).data as string;
 
     console.log(ADMIN_PUBLIC_KEY)
+
     const {
         register,
         watch,
@@ -53,11 +56,6 @@ export default function RegisterLand() {
     // Initialize useWriteContract.
     const { writeContract } = useWriteContract();
 
-    // Helper to encrypt strings (file content) with the admin's public key.
-    async function encryptWithAdminPublicKey(message: string): Promise<string> {
-        const encryptedObject = await EthCrypto.encryptWithPublicKey(ADMIN_PUBLIC_KEY, message)
-        return EthCrypto.cipher.stringify(encryptedObject)
-    }
 
     // Helper to upload content to IPFS.
     async function uploadToIPFS(file: File): Promise<string> {
@@ -83,18 +81,19 @@ export default function RegisterLand() {
             reader.onload = async () => {
                 try {
                     // Read file content as text (or you can convert to base64 if needed).
-                    const fileContent = reader.result as string
+                    const fileContent = reader.result as ArrayBuffer
+                    const base64EncodedFile = Buffer.from(fileContent).toString('base64');
                     // Encrypt content.
-                    const encrypted = await encryptWithAdminPublicKey(fileContent)
+                    const encrypted = await encryptFileWithPublicKey(file, base64EncodedFile, ADMIN_PUBLIC_KEY);
                     // Upload encrypted content to IPFS.
-                    const cid = await uploadToIPFS(new File([encrypted], file.name, { type: file.type }));
+                    const cid = await uploadToIPFS(new File([encrypted], `${file.name}.txt`, { type: "text/plain" }));
                     resolve(cid)
                 } catch (error) {
                     reject(error)
                 }
             }
             reader.onerror = reject
-            reader.readAsText(file)
+            reader.readAsArrayBuffer(file)
 
         })
     }
@@ -127,7 +126,7 @@ export default function RegisterLand() {
             // _plotNumber, _landSize, _gpsCoordinates, _hashedNIN, _witnessHashedNIN, _encryptedTitleDeedHash, _ownerFullName, _witnessFullName
             const args = [
                 data.plotNumber,
-                Number(data.landSize) * LAND_SIZE_DECIMALS,
+                Number(data.landSize) * (10 ** LAND_SIZE_DECIMALS),
                 data.gpsCoordinates,
                 encryptedFileCID, // IPFS CID of the encrypted file.
                 data.fullName,

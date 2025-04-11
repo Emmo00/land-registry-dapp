@@ -1,92 +1,195 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { ArrowLeft, Check, X, FileText, MapPin, User, Calendar, Ruler } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
+import { useReadContract, useWriteContract } from "wagmi"
+import { FileDecrypted, LandRecordType } from "@/types"
+import { formatDate, normalizeAcreAmount, parseDDAndConvertToDMS } from "@/utils/conversions"
+import { VerificationStatusToLabel } from "@/constants/abstract"
+import { decryptWithPrivateKey } from "@/utils/crypto"
+import { getExtensionFromFileName } from "@/utils/misc"
 
-// Mock data for demonstration
-const mockRequests = [
-    {
-        id: "1",
-        ownerName: "John Doe",
-        plotNumber: "PLT-2023-001",
-        landSize: "2.5 acres",
-        gpsCoordinates: "0.3476° N, 32.5825° E",
-        submissionDate: "2023-12-15",
-        status: "pending",
-        documentUrl: "#",
-        witnessName: "Sarah Johnson",
-        witnessContact: "+256 701 234 567",
-        additionalNotes: "Property borders a protected forest area on the eastern side.",
-    },
-    {
-        id: "2",
-        ownerName: "Jane Smith",
-        plotNumber: "PLT-2023-002",
-        landSize: "4.2 acres",
-        gpsCoordinates: "0.3157° N, 32.6012° E",
-        submissionDate: "2023-11-28",
-        status: "approved",
-        documentUrl: "#",
-        witnessName: "Michael Brown",
-        witnessContact: "+256 702 345 678",
-        additionalNotes: "Land previously used for agricultural purposes.",
-    },
-]
 
 export default function VerifyRequest({ params }: { params: { id: string } }) {
     const router = useRouter()
-    const [request, setRequest] = useState<any>(null)
+    let [request, setRequest] = useState<LandRecordType>();
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [rejectionReason, setRejectionReason] = useState<string>("")
+    const [isRejectionReasonVisible, setIsRejectionReasonVisible] = useState(false)
+    const landRequest = useReadContract({
+        abi: CONTRACT_ABI,
+        address: CONTRACT_ADDRESS,
+        functionName: "getLandById",
+        args: [use(params).id],
+    }).data as unknown as LandRecordType
+    const { writeContract } = useWriteContract();
+    const { toast } = useToast()
 
     useEffect(() => {
-        // Simulate API call to fetch request details
-        const fetchRequest = async () => {
-            setIsLoading(true)
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-
-            const foundRequest = mockRequests.find((req) => req.id === params.id)
-            setRequest(foundRequest || null)
-            setIsLoading(false)
+        if (landRequest) {
+            console.log("land request", landRequest);
+            setRequest(landRequest)
+            setIsLoading(false);
         }
-
-        fetchRequest()
-    }, [params.id])
+    }, [landRequest])
 
     const handleApprove = async () => {
         setIsSubmitting(true)
-        // Simulate API call to approve request
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-        setIsSubmitting(false)
 
-        // Redirect back to dashboard
-        router.push("/admin/dashboard")
+        // call contract to approve request
+        writeContract({
+            abi: CONTRACT_ABI,
+            address: CONTRACT_ADDRESS,
+            functionName: "verifyLand",
+            args: [request?.id],
+        }, {
+            onSettled: (data, error) => {
+                if (error) {
+                    setIsSubmitting(false)
+                    console.error("Error verifying land:", error);
+                    toast({
+                        title: "Error",
+                        description: "Failed to verify the request. Please try again." + error.message,
+                        variant: "destructive",
+                    })
+                    setIsSubmitting(false)
+                    return;
+                }
+                setIsSubmitting(false)
+                toast({
+                    title: "Success",
+                    description: "Land verified successfully.",
+                    variant: "default",
+                })
+                console.log("Land verified successfully:", data);
+                // Redirect back to dashboard
+                setTimeout(() => { router.push("/admin/dashboard") }, 2000)
+            }
+        })
+
+    }
+
+    const handleShowRejectReasonForm = () => {
+        setIsRejectionReasonVisible(true);
+
+        // smoothly scroll to bottom 
+        setTimeout(() => {
+            scrollTo({
+                top: document.documentElement.scrollHeight,
+                behavior: "smooth"
+            })
+        }, 100)
     }
 
     const handleReject = async () => {
         setIsSubmitting(true)
-        // Simulate API call to reject request
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-        setIsSubmitting(false)
 
-        // Redirect back to dashboard
-        router.push("/admin/dashboard")
-    }
 
-    // Format date to be more readable
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
+        // call contract to approve request
+        writeContract({
+            abi: CONTRACT_ABI,
+            address: CONTRACT_ADDRESS,
+            functionName: "rejectLand",
+            args: [request?.id, rejectionReason],
+        }, {
+            onSettled: (data, error) => {
+                if (error) {
+                    setIsSubmitting(false)
+                    console.error("Error rejecting land:", error);
+                    toast({
+                        title: "Error",
+                        description: "Failed to reject the request. Please try again." + error.message,
+                        variant: "destructive",
+                    })
+                    setIsSubmitting(false)
+                    return;
+                }
+                setIsSubmitting(false)
+                toast({
+                    title: "Success",
+                    description: "Land rejected successfully.",
+                    variant: "default",
+                })
+                console.log("Land rejected successfully:", data);
+                // Redirect back to dashboard
+                setTimeout(() => { router.push("/admin/dashboard") }, 2000)
+            }
         })
     }
+
+    const handleDocumentDownload = async () => {
+        try {
+            // Get encrypted file from IPFS
+            const formData = new FormData();
+            formData.set('cid', request?.encryptedTitleDeedHash!);
+            const fetchResponse = await fetch("/api/files/url", {
+                method: "POST",
+                body: formData
+            });
+
+            if (!fetchResponse.ok) {
+                throw new Error("Failed to fetch file URL");
+            }
+
+            const url = await fetchResponse.json();
+
+            // Fetch the file from the URL
+            const fileResponse = await fetch(url);
+            if (!fileResponse.ok) {
+                throw new Error("Failed to fetch file");
+            }
+
+            console.log(fileResponse);
+
+            const encryptedFile = (await fileResponse.arrayBuffer());
+
+            // convert encrypted file to string
+            const encryptedFileString = new TextDecoder().decode(new Uint8Array(encryptedFile));
+
+            console.log("encrypted file string", encryptedFileString);
+
+            // Get private key from session storage
+            const privateKey = sessionStorage.getItem("privateKey");
+            if (!privateKey) {
+                throw new Error("Private key not found in session storage");
+            }
+
+            console.log("private key", privateKey);
+
+            // Decrypt the file (assuming a decryptFile utility function exists)
+            const decryptedFile = JSON.parse(await decryptWithPrivateKey(encryptedFileString, privateKey)) as unknown as FileDecrypted;
+            const fileContentBase64 = decryptedFile.content
+
+            // base64 to file
+            const fileContent = atob(fileContentBase64);
+            const byteArray = new Uint8Array(fileContent.length);
+            for (let i = 0; i < fileContent.length; i++) {
+                byteArray[i] = fileContent.charCodeAt(i);
+            }
+
+            console.log('decrypted file', decryptedFile)
+
+            // Create a Blob and download the file
+            const blob = new File([byteArray], decryptedFile.name, { type: decryptedFile.type });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `${request?.plotNumber}_${request?.ownerFullName}.${getExtensionFromFileName(decryptedFile.name)}`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        } catch (error) {
+            console.error("Error downloading document:", error);
+            alert("Failed to download the document. Please try again.");
+        }
+    };
 
     if (isLoading) {
         return (
@@ -138,14 +241,14 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
                                 </div>
                                 <Badge
                                     className={
-                                        request.status === "pending"
+                                        VerificationStatusToLabel[request.status] === "pending"
                                             ? "bg-amber-100 text-amber-800"
-                                            : request.status === "approved"
+                                            : VerificationStatusToLabel[request.status] === "approved"
                                                 ? "bg-emerald-100 text-emerald-800"
                                                 : "bg-red-100 text-red-800"
                                     }
                                 >
-                                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                    {VerificationStatusToLabel[request.status].charAt(0).toUpperCase() + VerificationStatusToLabel[request.status].slice(1)}
                                 </Badge>
                             </div>
                         </CardHeader>
@@ -164,7 +267,7 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
                                                 <h3 className="text-sm font-medium text-slate-500 mb-1 flex items-center">
                                                     <User className="h-4 w-4 mr-1" /> Owner Name
                                                 </h3>
-                                                <p className="text-lg font-medium">{request.ownerName}</p>
+                                                <p className="text-lg font-medium">{request.ownerFullName}</p>
                                             </div>
 
                                             <div>
@@ -176,9 +279,9 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
 
                                             <div>
                                                 <h3 className="text-sm font-medium text-slate-500 mb-1 flex items-center">
-                                                    <Ruler className="h-4 w-4 mr-1" /> Land Size
+                                                    <Ruler className="h-4 w-4 mr-1" /> Land Size (acres)
                                                 </h3>
-                                                <p className="text-lg font-medium">{request.landSize}</p>
+                                                <p className="text-lg font-medium">{normalizeAcreAmount(request.landSize)}</p>
                                             </div>
                                         </div>
 
@@ -187,29 +290,23 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
                                                 <h3 className="text-sm font-medium text-slate-500 mb-1 flex items-center">
                                                     <MapPin className="h-4 w-4 mr-1" /> GPS Coordinates
                                                 </h3>
-                                                <p className="text-lg font-medium">{request.gpsCoordinates}</p>
+                                                <p className="text-lg font-medium">{parseDDAndConvertToDMS(request.gpsCoordinates)}</p>
                                             </div>
 
                                             <div>
                                                 <h3 className="text-sm font-medium text-slate-500 mb-1 flex items-center">
                                                     <Calendar className="h-4 w-4 mr-1" /> Submission Date
                                                 </h3>
-                                                <p className="text-lg font-medium">{formatDate(request.submissionDate)}</p>
-                                            </div>
-
-                                            <div>
-                                                <h3 className="text-sm font-medium text-slate-500 mb-1">Witness Information</h3>
-                                                <p className="font-medium">{request.witnessName}</p>
-                                                <p className="text-sm text-slate-500">{request.witnessContact}</p>
+                                                <p className="text-lg font-medium">{formatDate(request.timestamp)}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {request.additionalNotes && (
+                                    {request.rejectionReason && (
                                         <div>
                                             <h3 className="text-sm font-medium text-slate-500 mb-2">Additional Notes</h3>
                                             <p className="text-slate-700 bg-slate-50 p-3 rounded-md border border-slate-200">
-                                                {request.additionalNotes}
+                                                {request.rejectionReason}
                                             </p>
                                         </div>
                                     )}
@@ -218,26 +315,13 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
                                 <TabsContent value="documents">
                                     <div className="space-y-4">
                                         <div className="border border-slate-200 rounded-lg p-4">
-                                            <h3 className="font-medium mb-2">Title Deed / Certificate of Occupancy</h3>
+                                            <h3 className="font-medium mb-2" title={request.encryptedTitleDeedHash}>Title Deed / Certificate of Occupancy</h3>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <FileText className="h-5 w-5 text-slate-400 mr-2" />
-                                                    <span className="text-sm">land_title_document.pdf</span>
+                                                    {/* <span className="text-sm">land_title_document.pdf</span> */}
                                                 </div>
-                                                <Button variant="outline" size="sm">
-                                                    View Document
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className="border border-slate-200 rounded-lg p-4">
-                                            <h3 className="font-medium mb-2">Land Survey Map</h3>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center">
-                                                    <FileText className="h-5 w-5 text-slate-400 mr-2" />
-                                                    <span className="text-sm">survey_map.jpg</span>
-                                                </div>
-                                                <Button variant="outline" size="sm">
+                                                <Button onClick={handleDocumentDownload} variant="outline" size="sm">
                                                     View Document
                                                 </Button>
                                             </div>
@@ -251,7 +335,7 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
                             <motion.div className="w-full sm:w-auto" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                                 <Button
                                     onClick={handleApprove}
-                                    disabled={isSubmitting || request.status !== "pending"}
+                                    disabled={isSubmitting || VerificationStatusToLabel[request.status] !== "pending"}
                                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
                                 >
                                     {isSubmitting ? (
@@ -289,8 +373,8 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
 
                             <motion.div className="w-full sm:w-auto" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                                 <Button
-                                    onClick={handleReject}
-                                    disabled={isSubmitting || request.status !== "pending"}
+                                    onClick={handleShowRejectReasonForm}
+                                    disabled={isSubmitting || VerificationStatusToLabel[request.status] !== "pending"}
                                     variant="outline"
                                     className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                                 >
@@ -328,6 +412,69 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
                             </motion.div>
                         </CardFooter>
                     </Card>
+                    {/* Rejection Reason Form */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: isRejectionReasonVisible ? 1 : 0, y: isRejectionReasonVisible ? 0 : 20 }}
+                        transition={{ duration: 0.5 }}
+                        className={`transition-all duration-500 ${isRejectionReasonVisible ? "block" : "hidden"}`}
+                    >
+                        <Card className="mb-6">
+                            <CardHeader>
+                                <CardTitle className="text-lg">Rejection Reason</CardTitle>
+                                <CardDescription>Provide a reason for rejecting the request</CardDescription>
+                            </CardHeader>
+
+                            <CardContent>
+                                <textarea
+                                    className="w-full border border-slate-200 rounded-md p-3"
+                                    rows={4}
+                                    placeholder="Enter reason for rejection"
+                                    value={rejectionReason}
+                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                ></textarea>
+                            </CardContent>
+
+                            <CardFooter className="flex justify-end">
+                                <Button
+                                    onClick={handleReject}
+                                    disabled={isSubmitting || VerificationStatusToLabel[request.status] !== "pending"}
+                                    variant="destructive"
+                                >
+                                    {isSubmitting ? (
+                                        <div className="flex items-center">
+                                            <svg
+                                                className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <circle
+                                                    className="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    strokeWidth="4"
+                                                ></circle>
+                                                <path
+                                                    className="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                ></path>
+                                            </svg>
+                                            Processing...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <X className="mr-2 h-4 w-4" />
+                                            Reject Request
+                                        </>
+                                    )}
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    </motion.div>
                 </motion.div>
             </div>
         </div>

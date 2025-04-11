@@ -10,3 +10,9 @@ export type LandRecordType = {
     status: number;
     timestamp: bigint;
 }
+
+export type FileDecrypted = {
+    name: string;
+    type: string;
+    content: string;
+}

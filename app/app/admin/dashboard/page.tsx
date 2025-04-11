@@ -269,7 +269,7 @@ export default function GovernmentDashboard() {
                                         <TableCell className="font-medium">{request.ownerFullName}</TableCell>
                                         <TableCell>{request.plotNumber}</TableCell>
                                         <TableCell>{normalizeAcreAmount(request.landSize)}</TableCell>
-                                        <TableCell className="max-w-[200px] truncate" title={parseDDAndConvertToDMS(request.gpsCoordinates)}>
+                                        <TableCell className="max-w-[200px] truncate" title={parseDDAndConvertToDMS(request.gpsCoordinates)!}>
                                             {request.gpsCoordinates}
                                         </TableCell>
                                         <TableCell>{formatDate(request.timestamp)}</TableCell>
@@ -282,7 +282,7 @@ export default function GovernmentDashboard() {
                                                     className="bg-emerald-600 hover:bg-emerald-500 text-white"
                                                 >
                                                     <Eye className="mr-1 h-4 w-4" />
-                                                    View & Verify
+                                                    {request.status === 0 ? "View & Verify" : "View"}
                                                 </Button>
                                             </motion.div>
                                         </TableCell>
@@ -337,7 +337,7 @@ export default function GovernmentDashboard() {
                                                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
                                                 >
                                                     <Eye className="mr-2 h-4 w-4" />
-                                                    View & Verify
+                                                    {request.status === 0 ? "View & Verify" : "View"}
                                                 </Button>
                                             </motion.div>
                                         </div>
