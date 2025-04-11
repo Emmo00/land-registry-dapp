@@ -82,6 +82,7 @@ contract LandRegistry is Ownable, ReentrancyGuard {
     constructor(string memory _adminPublicKey) Ownable(msg.sender) {
         adminPublicKey = _adminPublicKey; // Set the admin public key
         _landIdCounter = new Counter(); // Initialize the counter
+        _landIdCounter.increment(); // Start land ID from 1
         governmentOfficials[msg.sender] = true; // Add the contract deployer as an official
     }
 

@@ -13,31 +13,8 @@ import { useRouter } from 'next/navigation';
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
 import { LabelToVerificationStatus } from "@/constants/abstract"
 import { type LandRecordType } from "../../../types"
+import Link from "next/link"
 
-// Mock data for demonstration
-const mockSubmissions = [
-    {
-        id: "1",
-        plotNumber: "PLT-2023-001",
-        landSize: "2.5 acres",
-        status: "pending",
-        submissionDate: "2023-12-15",
-    },
-    {
-        id: "2",
-        plotNumber: "PLT-2023-002",
-        landSize: "4.2 acres",
-        status: "approved",
-        submissionDate: "2023-11-28",
-    },
-    {
-        id: "3",
-        plotNumber: "PLT-2023-003",
-        landSize: "1.8 acres",
-        status: "rejected",
-        submissionDate: "2023-12-05",
-    },
-]
 
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState("all");
@@ -148,7 +125,9 @@ export default function Dashboard() {
                                         }}
                                     >
                                         {filteredSubmissions.map((submission) => (
-                                            <LandCard key={submission.id} submission={submission} />
+                                            <Link href={`/land-owner/dashboard/lands/${submission.id}`} key={submission.id}>
+                                                <LandCard key={submission.id} submission={submission} />
+                                            </Link>
                                         ))}
                                     </motion.div>
                                 ) : (

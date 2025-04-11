@@ -28,14 +28,12 @@ export default function GovernmentDashboard() {
         address: CONTRACT_ADDRESS,
         functionName: "getAllLands",
     }).data as unknown as LandRecordType[] || []
-    const [filteredRequests, setFilteredRequests] = useState<LandRecordType[]>(results)
-
-    console.log("Land Records: ", results)
+    const [filteredRequests, setFilteredRequests] = useState<LandRecordType[]>(results.filter((request) => request.ownerFullName))
 
     useEffect(() => {
         // Filter and sort requests when the component mounts
-        setFilteredRequests(results)
-    });
+        setFilteredRequests(results.filter((request) => request.ownerFullName))
+    }, [results]);
 
 
     // Filter and sort requests based on search term and status filter

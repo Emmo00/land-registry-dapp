@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SearchIcon, MapPin, User, FileText, Download, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,64 +11,49 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-
-// Mock data for demonstration
-const mockRecords = [
-    {
-        id: "1",
-        proof: "PLT-2023-001",
-        landSize: "2.5 acres",
-        gpsCoordinates: "0.3476° N, 32.5825° E",
-        ownerName: "John Doe",
-        verified: true,
-        governmentVerification: true,
-        proofUrl: "#",
-    },
-    {
-        id: "2",
-        proof: "PLT-2023-002",
-        landSize: "4.2 acres",
-        gpsCoordinates: "0.3157° N, 32.6012° E",
-        ownerName: "Jane Smith",
-        verified: true,
-        governmentVerification: false,
-        proofUrl: "#",
-    },
-    {
-        id: "3",
-        proof: "PLT-2023-003",
-        landSize: "1.8 acres",
-        gpsCoordinates: "0.3290° N, 32.5710° E",
-        ownerName: "Robert Johnson",
-        verified: false,
-        governmentVerification: false,
-        proofUrl: null,
-    },
-]
+import { LandRecordType } from "@/types"
+import { form } from "viem/chains"
+import { normalizeAcreAmount, parseDDAndConvertToDMS } from "@/utils/conversions"
+import { useReadContract, useWriteContract } from "wagmi"
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
+import { useToast } from "@/components/ui/use-toast"
+import { Toaster } from "@/components/ui/toaster"
+import { readContract } from "viem/actions"
 
 type SearchFormData = {
     proof: string
 }
 
-type LandRecord = {
-    id: string
-    plotNumber: string
-    landSize: string
-    gpsCoordinates: string
-    ownerName: string
-    verified: boolean
-    governmentVerification: boolean
-    proofUrl: string | null
-}
 
 export default function SearchPage() {
     const [formData, setFormData] = useState<SearchFormData>({
         proof: "",
     })
-    const [searchResults, setSearchResults] = useState<LandRecord[] | null>(null)
+    const [searchResult, setSearchResult] = useState<LandRecordType | null>(null)
     const [isSearching, setIsSearching] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [hasSearched, setHasSearched] = useState(false)
+    const [hasSearched, setHasSearched] = useState(false);
+    const [proof, setProof] = useState<string | null>(null);
+
+    const landRecord = useReadContract({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: "getLandRecord",
+        args: [proof],
+    })
+
+    useEffect(() => {
+        console.log("landRecord", landRecord);
+        if (landRecord.isSuccess) {
+            const data = landRecord.data
+            if (data) {
+                setSearchResult(data as LandRecordType)
+            } else {
+                setSearchResult(null)
+            }
+            setIsSearching(false)
+        }
+    }, [landRecord]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target
@@ -77,6 +62,7 @@ export default function SearchPage() {
 
     const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault()
+
 
         // Reset states
         setError(null)
@@ -87,24 +73,17 @@ export default function SearchPage() {
         if (!formData.proof) {
             setError("Please enter ownership proof.")
             setIsSearching(false)
-            setSearchResults(null)
-            return
+            setSearchResult(null)
+            return;
         }
 
-        // Simulate API call with delay
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // Filter mock data based on search criteria
-        const results = mockRecords.filter((record) => {
-            const plotMatch = formData.proof
-                ? record.proof.toLowerCase().includes(formData.proof.toLowerCase())
-                : true
-
-            return plotMatch && gpsMatch && ownerMatch
-        })
-
-        setSearchResults(results)
-        setIsSearching(false)
+        if (formData.proof.length !== 66) {
+            setError("Invalid proof length. Proof should be 32 characters long." + formData.proof.length);
+            setIsSearching(false)
+            setSearchResult(null)
+            return;
+        }
+        setProof(formData.proof)
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -180,8 +159,8 @@ export default function SearchPage() {
                             whileTap={{ scale: 0.98 }}
                         >
                             <Button
-                                type="submit"
                                 disabled={isSearching}
+                                onClick={handleSearch}
                                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-6 h-auto rounded-lg shadow-sm transition-all"
                             >
                                 {isSearching ? (
@@ -237,58 +216,56 @@ export default function SearchPage() {
                 <AnimatePresence>
                     {hasSearched && !error && (
                         <motion.div variants={resultsVariants} initial="hidden" animate="visible" exit={{ opacity: 0, y: -20 }}>
-                            {searchResults && searchResults.length > 0 ? (
+                            {searchResult ? (
                                 <div className="space-y-6">
                                     <h2 className="text-xl font-semibold text-slate-800 mb-4">Search Results</h2>
-                                    {searchResults.map((record) => (
-                                        <Card key={record.id} className="overflow-hidden">
-                                            <CardContent className="p-6">
-                                                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-                                                    <h3 className="text-lg font-medium text-slate-800">Plot {record.proof}</h3>
-                                                    <div className="mt-2 md:mt-0">
-                                                        {record.verified ? (
-                                                            <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                                                                ✅ Verified
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge className="bg-red-100 text-red-800 hover:bg-red-100">❌ Not Verified</Badge>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                                    <div>
-                                                        <p className="text-sm text-slate-500">Owner</p>
-                                                        <p className="font-medium text-slate-700">{record.ownerName}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm text-slate-500">Land Size</p>
-                                                        <p className="font-medium text-slate-700">{record.landSize}</p>
-                                                    </div>
-                                                    <div className="md:col-span-2">
-                                                        <p className="text-sm text-slate-500">GPS Coordinates</p>
-                                                        <p className="font-medium text-slate-700">{record.gpsCoordinates}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-200">
-                                                    {record.governmentVerification && (
-                                                        <Button variant="outline" className="flex-1">
-                                                            <FileText className="mr-2 h-4 w-4" />
-                                                            View Government Verification
-                                                        </Button>
-                                                    )}
-
-                                                    {record.verified && (
-                                                        <Button className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
-                                                            <Download className="mr-2 h-4 w-4" />
-                                                            Download Ownership Proof
-                                                        </Button>
+                                    <Card className="overflow-hidden">
+                                        <CardContent className="p-6">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                                                <h3 className="text-lg font-medium text-slate-800">Plot {searchResult.plotNumber}</h3>
+                                                <div className="mt-2 md:mt-0">
+                                                    {searchResult.status === 1 ? (
+                                                        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                                                            ✅ Verified
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">❌ Not Verified</Badge>
                                                     )}
                                                 </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                                <div>
+                                                    <p className="text-sm text-slate-500">Owner</p>
+                                                    <p className="font-medium text-slate-700">{searchResult.ownerFullName}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-slate-500">Land Size</p>
+                                                    <p className="font-medium text-slate-700">{(normalizeAcreAmount(searchResult.landSize))}</p>
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <p className="text-sm text-slate-500">GPS Coordinates</p>
+                                                    <p className="font-medium text-slate-700">{parseDDAndConvertToDMS(searchResult.gpsCoordinates)}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-200">
+                                                {/* {searchResult.governmentVerification && (
+                                                    <Button variant="outline" className="flex-1">
+                                                        <FileText className="mr-2 h-4 w-4" />
+                                                        View Government Verification
+                                                    </Button>
+                                                )} */}
+
+                                                {/* {searchResult.verified && (
+                                                    <Button className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
+                                                        <Download className="mr-2 h-4 w-4" />
+                                                        Download Ownership Proof
+                                                    </Button>
+                                                )} */}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
                                 </div>
                             ) : (
                                 <motion.div
@@ -331,6 +308,7 @@ export default function SearchPage() {
                     )}
                 </AnimatePresence>
             </div>
+            <Toaster />
         </div>
     )
 }

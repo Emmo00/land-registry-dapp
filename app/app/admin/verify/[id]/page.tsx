@@ -16,6 +16,7 @@ import { formatDate, normalizeAcreAmount, parseDDAndConvertToDMS } from "@/utils
 import { VerificationStatusToLabel } from "@/constants/abstract"
 import { decryptWithPrivateKey } from "@/utils/crypto"
 import { getExtensionFromFileName } from "@/utils/misc"
+import { Toaster } from "@/components/ui/toaster"
 
 
 export default function VerifyRequest({ params }: { params: { id: string } }) {
@@ -160,13 +161,13 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
             // Get private key from session storage
             const privateKey = sessionStorage.getItem("privateKey");
             if (!privateKey) {
-                throw new Error("Private key not found in session storage");
+                router.push("/admin/login");
             }
 
             console.log("private key", privateKey);
 
             // Decrypt the file (assuming a decryptFile utility function exists)
-            const decryptedFile = JSON.parse(await decryptWithPrivateKey(encryptedFileString, privateKey)) as unknown as FileDecrypted;
+            const decryptedFile = JSON.parse(await decryptWithPrivateKey(encryptedFileString, privateKey!)) as unknown as FileDecrypted;
             const fileContentBase64 = decryptedFile.content
 
             // base64 to file
@@ -477,6 +478,7 @@ export default function VerifyRequest({ params }: { params: { id: string } }) {
                     </motion.div>
                 </motion.div>
             </div>
+            <Toaster />
         </div>
     )
 }
