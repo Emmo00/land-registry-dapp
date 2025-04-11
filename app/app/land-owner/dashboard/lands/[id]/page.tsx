@@ -17,7 +17,7 @@ import { formatDate, normalizeAcreAmount, parseDDAndConvertToDMS } from "@/utils
 import { VerificationStatusToLabel } from "@/constants/abstract"
 
 
-export default function ViewRequest({ params }: { params: { id: string } }) {
+export default function ViewRequest({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter()
     let [request, setRequest] = useState<LandRecordType>();
     const [isLoading, setIsLoading] = useState(true);

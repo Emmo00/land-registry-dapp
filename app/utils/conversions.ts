@@ -51,11 +51,11 @@ export const formatDate = (timestamp: number | bigint) => {
         timestamp = Number(timestamp);
     }
 
-    return new Date(Date(timestamp)).toLocaleDateString("en-US", {
+    return (new Date(timestamp)).toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
-    })
+    });
 }
 
 export function normalizeAcreAmount(acre: bigint) {
