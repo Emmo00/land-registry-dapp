@@ -52,7 +52,7 @@ export default function RegisterLand() {
     // Initialize useWriteContract.
     const { data: hash, writeContract, error: writeContractError, isPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess: isConfirmed, error: confirmationError } = useWaitForTransactionReceipt({
-        confirmations: 2,
+        confirmations: 1,
         hash,
     })
 

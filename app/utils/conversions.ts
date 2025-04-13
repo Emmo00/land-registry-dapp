@@ -51,7 +51,7 @@ export const formatDate = (timestamp: number | bigint) => {
         timestamp = Number(timestamp);
     }
 
-    return (new Date(timestamp)).toLocaleDateString("en-US", {
+    return (new Date(timestamp * 1000)).toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",

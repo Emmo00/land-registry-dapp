@@ -11,8 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
-import { useReadContract, useWriteContract } from "wagmi"
-import { LandRecordType } from "@/types"
+import { BaseError, useReadContract, useWatchContractEvent, useWriteContract } from "wagmi"
+import { LandRecordType, ProofGeneratedLog } from "@/types"
 import { formatDate, normalizeAcreAmount, parseDDAndConvertToDMS } from "@/utils/conversions"
 import { VerificationStatusToLabel } from "@/constants/abstract"
 
@@ -32,8 +32,54 @@ export default function ViewRequest({ params }: { params: Promise<{ id: string }
             enabled: !!use(params).id,
         }
     }).data as unknown as LandRecordType;
-    const { writeContract } = useWriteContract();
+    const { data: hash, error: writeContractError, writeContract } = useWriteContract();
     const { toast } = useToast();
+
+    // handle write contract error
+    useEffect(() => {
+        if (writeContractError) {
+            console.error("Error writing contract", writeContractError);
+            toast({
+                title: "Error Generating Proof",
+                description: (writeContractError as BaseError).shortMessage || writeContractError.message || "An error occurred while generating the proof. Please try again.",
+                variant: "destructive",
+            })
+            setIsGeneratingProof(false);
+        }
+    }, [writeContractError])
+
+    // watch blockchain for proof generated event
+    useWatchContractEvent({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        eventName: "ProofGenerated",
+        onLogs: (logs) => {
+            console.log("ProofGenerated event logs", logs);
+            for (let i = 0; i < logs.length; i++) {
+                const log = logs[i] as unknown as ProofGeneratedLog;
+                if (log.args.id !== request?.id) {
+                    console.log("ProofGenerated event not for this request", log.args.id, request?.id);
+                    continue;
+                }
+                console.log("ProofGenerated event for this request", log.args.id, request?.id);
+                const proof = log.args.proofHash;
+                setLandProof(proof);
+                setIsGeneratingProof(false);
+                toast({
+                    title: "Land Proof Generated",
+                    description: "Land proof successfully generated",
+                    variant: "default",
+                })
+                // scroll to the bottom
+                setTimeout(() => {
+                    scrollTo({
+                        top: document.documentElement.scrollHeight,
+                        behavior: "smooth",
+                    })
+                }, 1000);
+            }
+        }
+    });
 
     useEffect(() => {
         if (landRequest) {
@@ -62,22 +108,6 @@ export default function ViewRequest({ params }: { params: Promise<{ id: string }
                     })
                     return;
                 }
-
-                setIsGeneratingProof(false);
-                setLandProof(data as unknown as string);
-                console.log("land proof", data);
-                toast({
-                    title: "Land Proof Generated",
-                    description: "Land proof successfully generated",
-                    variant: "default",
-                })
-                // scroll to the bottom
-                setTimeout(() => {
-                    scrollTo({
-                        top: document.documentElement.scrollHeight,
-                        behavior: "smooth",
-                    })
-                }, 1000);
             },
         })
     }
@@ -205,7 +235,7 @@ export default function ViewRequest({ params }: { params: Promise<{ id: string }
                             </Tabs>
                         </CardContent>
 
-                        <CardFooter className="flex md:flex-col text-left sm:flex-row gap-3 pt-6 border-t border-slate-200">
+                        <CardFooter className="flex flex-col text-left gap-3 pt-6 border-t border-slate-200">
                             {/* Generate Proof Button */}
                             {VerificationStatusToLabel[request.status] === "approved" && (
                                 <Button
@@ -218,7 +248,6 @@ export default function ViewRequest({ params }: { params: Promise<{ id: string }
                                 </Button>
                             )}
 
-                            <br />
                             {/* show generated Proof */}
                             {landProof && (
                                 <motion.div

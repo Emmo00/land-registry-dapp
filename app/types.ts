@@ -1,3 +1,5 @@
+import { Address } from "viem";
+
 export type LandRecordType = {
     id: bigint;
     ownerFullName: string;
@@ -15,4 +17,12 @@ export type FileDecrypted = {
     name: string;
     type: string;
     content: string;
+}
+
+export type ProofGeneratedLog = {
+    args: {
+        id: bigint;
+        owner: Address;
+        proofHash: string;
+    }
 }
