@@ -104,8 +104,6 @@ export default function LoginPage() {
         try {
             const isValid = await validatePrivateKey(privateKey, ADMIN_PUBLIC_KEY)
 
-            console.log("Private Key Valid: ", isValid);
-
             if (isValid) {
                 // store private key in session storage
                 sessionStorage.setItem("privateKey", privateKey)

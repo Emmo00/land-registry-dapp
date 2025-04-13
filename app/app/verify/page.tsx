@@ -45,7 +45,6 @@ export default function VerifyProofPage() {
     })
 
     useEffect(() => {
-        console.log("Land ID:", landID, "Land Record:", landRecord);
         if (landRecord) {
             setHasSearched(true);
             setIsSearching(false);
@@ -90,7 +89,6 @@ export default function VerifyProofPage() {
 
                 const landID = log.args.id;
                 setLandID(landID);
-                console.log("Land ID:", landID);
                 refetchLandDetails();
                 break;
             }
@@ -125,8 +123,6 @@ export default function VerifyProofPage() {
             setSearchResult(null)
             return;
         }
-
-        console.log("verifying proof:", formData.proof)
 
         writeContract({
             address: CONTRACT_ADDRESS,
