@@ -27,7 +27,7 @@ export default function GovernmentDashboard() {
         abi: CONTRACT_ABI,
         address: CONTRACT_ADDRESS,
         functionName: "getAllLands",
-    }).data as unknown as LandRecordType[] || []).filter((request) => request.ownerFullName)
+    }).data as unknown as LandRecordType[] || [])
     const [filteredRequests, setFilteredRequests] = useState<LandRecordType[]>(results.filter((request) => request.ownerFullName))
 
     useEffect(() => {
@@ -110,7 +110,7 @@ export default function GovernmentDashboard() {
     }
 
     const handleViewRequest = (id: bigint) => {
-        router.push(`/admin/verify/${id}`)
+        router.push(`/admin/verify/${id}`, { scroll: false })
     }
 
     // Get status badge color
