@@ -47,50 +47,54 @@ export default function GovernmentDashboard() {
         // Apply search filter
         if (searchTerm) {
             const term = searchTerm.toLowerCase()
-            results = results.filter(
-                (request) =>
-                    request.ownerFullName.toLowerCase().includes(term) ||
-                    request.plotNumber.toLowerCase().includes(term) ||
-                    request.gpsCoordinates.toLowerCase().includes(term),
-            )
+            results = results
+                .filter((request => request.ownerFullName)) // Ensure ownerFullName is not undefined
+                .filter(
+                    (request) =>
+                        request.ownerFullName.toLowerCase().includes(term) ||
+                        request.plotNumber.toLowerCase().includes(term) ||
+                        request.gpsCoordinates.toLowerCase().includes(term),
+                )
         }
 
         // Apply sorting
         if (sortField) {
-            results = [...results].sort((a, b) => {
-                const aValue = a[sortField]
-                const bValue = b[sortField]
+            results = [...results]
+                .filter(result => result.ownerFullName) // Ensure ownerFullName is not undefined
+                .sort((a, b) => {
+                    const aValue = a[sortField]
+                    const bValue = b[sortField]
 
-                if (sortDirection === "asc") {
-                    if (typeof aValue === "number" && typeof bValue === "number") {
-                        return aValue - bValue
+                    if (sortDirection === "asc") {
+                        if (typeof aValue === "number" && typeof bValue === "number") {
+                            return aValue - bValue
+                        }
+
+                        if (typeof aValue === "bigint" && typeof bValue === "bigint") {
+                            return Number(aValue) - Number(bValue)
+                        }
+
+                        if (typeof aValue === "string" && typeof bValue === "string") {
+                            return aValue.localeCompare(bValue)
+                        }
+
+                        return 0
+                    } else {
+                        if (typeof aValue === "number" && typeof bValue === "number") {
+                            return bValue - aValue
+                        }
+
+                        if (typeof aValue === "bigint" && typeof bValue === "bigint") {
+                            return Number(bValue) - Number(aValue)
+                        }
+
+                        if (typeof aValue === "string" && typeof bValue === "string") {
+                            return bValue.localeCompare(aValue)
+                        }
+
+                        return 0
                     }
-
-                    if (typeof aValue === "bigint" && typeof bValue === "bigint") {
-                        return Number(aValue) - Number(bValue)
-                    }
-
-                    if (typeof aValue === "string" && typeof bValue === "string") {
-                        return aValue.localeCompare(bValue)
-                    }
-
-                    return 0
-                } else {
-                    if (typeof aValue === "number" && typeof bValue === "number") {
-                        return bValue - aValue
-                    }
-
-                    if (typeof aValue === "bigint" && typeof bValue === "bigint") {
-                        return Number(bValue) - Number(aValue)
-                    }
-
-                    if (typeof aValue === "string" && typeof bValue === "string") {
-                        return bValue.localeCompare(aValue)
-                    }
-
-                    return 0
-                }
-            })
+                })
         }
 
         setFilteredRequests(results)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { motion } from "framer-motion"
 import { useToast } from "@/components/ui/use-toast"
@@ -13,12 +13,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import FileUpload from "@/components/file-upload"
 import Link from "next/link";
 import { CONTRACT_ADDRESS, CONTRACT_ABI, LAND_SIZE_DECIMALS } from "@/constants/contract";
-import { useWriteContract, useReadContract, useAccount } from "wagmi";
-import EthCrypto from "eth-crypto";
+import { useWriteContract, useReadContract, useAccount, useTransactionReceipt, useWaitForTransactionReceipt, BaseError } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { parseDDAndConvertToDMS, isValidDDLocation } from "@/utils/conversions";
-import { randomBytes } from "crypto";
-import { encryptFileWithPublicKey } from "@/utils/crypto";
+import { processFileEncryptionAndUpload } from "@/utils/file-actions"
 
 type FormData = {
     fullName: string
@@ -44,8 +42,6 @@ export default function RegisterLand() {
         functionName: "adminPublicKey",
     }).data as string;
 
-    console.log(ADMIN_PUBLIC_KEY)
-
     const {
         register,
         watch,
@@ -54,49 +50,60 @@ export default function RegisterLand() {
     } = useForm<FormData>()
 
     // Initialize useWriteContract.
-    const { writeContract } = useWriteContract();
+    const { data: hash, writeContract, error: writeContractError, isPending } = useWriteContract();
+    const { isLoading: isConfirming, isSuccess: isConfirmed, error: confirmationError } = useWaitForTransactionReceipt({
+        confirmations: 2,
+        hash,
+    })
 
+    useEffect(() => {
+        if (isConfirmed) {
+            toast({
+                title: "Transaction Confirmed",
+                description: "Your land has been successfully registered on the blockchain.",
+                variant: "default",
+                duration: 2000,
+                action: (
+                    <div className="h-8 w-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <Check className="h-5 w-5 text-emerald-600" />
+                    </div>
+                ),
+            })
+            setIsSubmitting(false);
+        }
+        if (isConfirming) {
+            toast({
+                title: "Confirming Transaction...",
+                description: "Your transaction is being confirmed on the blockchain.",
+                variant: "default",
+                duration: 2000,
+            })
+        }
+    }, [isConfirming, isConfirmed])
 
-    // Helper to upload content to IPFS.
-    async function uploadToIPFS(file: File): Promise<string> {
-        const formData = new FormData();
+    useEffect(() => {
+        if (confirmationError) {
+            console.error("Error confirming transaction:", confirmationError)
+            toast({
+                title: "Transaction Confirmation Failed",
+                description: (confirmationError as BaseError).shortMessage || confirmationError.message || "Something went wrong while confirming your transaction",
+                variant: "destructive",
+            })
+            setIsSubmitting(false);
+        }
+    }, [confirmationError])
 
-        formData.set('file', file);
-
-        const uploadRequest = await fetch("/api/files", {
-            method: "POST",
-            body: formData,
-        });
-        const cid = await uploadRequest.json();
-
-        console.log("file cid", cid);
-
-        return cid;
-    }
-
-    // Process file: read it, encrypt with admin public key and upload to IPFS.
-    async function processFileEncryption(file: File): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = async () => {
-                try {
-                    // Read file content as text (or you can convert to base64 if needed).
-                    const fileContent = reader.result as ArrayBuffer
-                    const base64EncodedFile = Buffer.from(fileContent).toString('base64');
-                    // Encrypt content.
-                    const encrypted = await encryptFileWithPublicKey(file, base64EncodedFile, ADMIN_PUBLIC_KEY);
-                    // Upload encrypted content to IPFS.
-                    const cid = await uploadToIPFS(new File([encrypted], `${file.name}.txt`, { type: "text/plain" }));
-                    resolve(cid)
-                } catch (error) {
-                    reject(error)
-                }
-            }
-            reader.onerror = reject
-            reader.readAsArrayBuffer(file)
-
-        })
-    }
+    useEffect(() => {
+        if (writeContractError) {
+            console.error("Error writing to contract:", writeContractError)
+            toast({
+                title: "Transaction Failed",
+                description: (writeContractError as BaseError).shortMessage || writeContractError.message || "Something went wrong while writing to the contract",
+                variant: "destructive",
+            })
+            setIsSubmitting(false);
+        }
+    }, [writeContractError])
 
     const onSubmit = async (data: FormData) => {
         if (!file) {
@@ -119,7 +126,7 @@ export default function RegisterLand() {
 
 
             // 2. Encrypt and upload the title deed/certificate file.
-            const encryptedFileCID = await processFileEncryption(file)
+            const encryptedFileCID = await processFileEncryptionAndUpload(file, ADMIN_PUBLIC_KEY)
 
             // 3. Prepare contract call arguments.
             // The order of parameters in the contract:
@@ -143,15 +150,16 @@ export default function RegisterLand() {
             }, {
                 onSuccess: () => {
                     toast({
-                        title: "Success!",
-                        description: "Your land registration has been submitted to the blockchain",
+                        title: "Submitted!",
+                        description: "Waiting for transaction confirmation...",
+                        variant: "default",
+                        duration: 2000,
                         action: (
                             <div className="h-8 w-8 bg-emerald-100 rounded-full flex items-center justify-center">
                                 <Check className="h-5 w-5 text-emerald-600" />
                             </div>
                         ),
                     })
-                    setIsSubmitting(false);
                 },
 
                 onError: (error) => {
@@ -284,10 +292,10 @@ export default function RegisterLand() {
                         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                             <Button
                                 onClick={handleSubmit(onSubmit)}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || isPending}
                                 className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-6 h-auto rounded-lg shadow-sm transition-all"
                             >
-                                {isSubmitting ? (
+                                {(isSubmitting || isPending) ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Encrypting & uploading to Web3...

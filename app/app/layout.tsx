@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Web3Provider from "@/components/providers/Web3Provider";
 import "./globals.css";
 import '@rainbow-me/rainbowkit/styles.css';
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import HoveringWalletButton from "@/components/buttons/HoveringWalletButton";
 
 const inter = Inter({ subsets: ["latin"] })

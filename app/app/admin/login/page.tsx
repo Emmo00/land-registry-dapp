@@ -43,6 +43,9 @@ export default function LoginPage() {
         abi: CONTRACT_ABI,
         functionName: "governmentOfficials",
         args: [address],
+        query: {
+            enabled: !!address,
+        }
     }).data as unknown as boolean
 
     const checkAdminPrivileges = async (address: Address): Promise<boolean> => {

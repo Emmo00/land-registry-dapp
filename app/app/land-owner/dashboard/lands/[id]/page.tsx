@@ -28,6 +28,9 @@ export default function ViewRequest({ params }: { params: Promise<{ id: string }
         address: CONTRACT_ADDRESS,
         functionName: "getLandById",
         args: [use(params).id],
+        query: {
+            enabled: !!use(params).id,
+        }
     }).data as unknown as LandRecordType;
     const { writeContract } = useWriteContract();
     const { toast } = useToast();

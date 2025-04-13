@@ -19,9 +19,8 @@ import Link from "next/link"
 export default function Dashboard() {
     const [activeTab, setActiveTab] = useState("all");
     const { openConnectModal } = useConnectModal();
-    const { isConnected, } = useAccount();
+    const { isConnected, address } = useAccount();
     const router = useRouter();
-    const { address, } = useAccount();
 
     // get land submissions from contract
     const submissions = useReadContract({
@@ -29,6 +28,9 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS,
         functionName: 'getLandsByOwner',
         args: [address],
+        query: {
+            enabled: !!address,
+        }
     }).data as unknown as LandRecordType[];
 
     console.log(submissions);
