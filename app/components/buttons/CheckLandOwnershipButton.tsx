@@ -15,7 +15,7 @@ export default function CheckLandOwnershipButton() {
         if (!isConnected) {
             openConnectModal?.();
         } else {
-            router.push('/search');
+            router.push('/verify');
         }
     }
     return (

@@ -23,11 +23,11 @@ export default function GovernmentDashboard() {
     const [statusFilter, setStatusFilter] = useState<string>("all")
     const [sortField, setSortField] = useState<keyof LandRecordType | null>(null)
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-    let results = useReadContract({
+    let results = (useReadContract({
         abi: CONTRACT_ABI,
         address: CONTRACT_ADDRESS,
         functionName: "getAllLands",
-    }).data as unknown as LandRecordType[] || []
+    }).data as unknown as LandRecordType[] || []).filter((request) => request.ownerFullName)
     const [filteredRequests, setFilteredRequests] = useState<LandRecordType[]>(results.filter((request) => request.ownerFullName))
 
     useEffect(() => {
