@@ -27,7 +27,6 @@ export default function LoginPage() {
     const [isValidatingKey, setIsValidatingKey] = useState<boolean>(false)
     const [error, setError] = useState<string | null>(null)
     const [privateKeyError, setPrivateKeyError] = useState<boolean>(false);
-    const [awaitingConnection, setAwaitingConnection] = useState<boolean>(false)
 
     const { openConnectModal } = useConnectModal();
     const { address, isConnected } = useAccount();
@@ -43,14 +42,7 @@ export default function LoginPage() {
         abi: CONTRACT_ABI,
         functionName: "governmentOfficials",
         args: [address],
-        query: {
-            enabled: !!address,
-        }
     }).data as unknown as boolean
-
-    const checkAdminPrivileges = async (address: Address): Promise<boolean> => {
-        return userHasOfficialPrivileges;
-    }
 
     const validatePrivateKey = async (privateKey: string, publicKey: string): Promise<boolean> => {
         const encryptedMessage = await EthCrypto.encryptWithPublicKey(publicKey, "hi");
@@ -67,7 +59,6 @@ export default function LoginPage() {
             // Open wallet connection modal if not connected
             if (!isConnected) {
                 openConnectModal?.()
-                setAwaitingConnection(true)
                 setIsConnecting(false)
                 return
             }
@@ -77,13 +68,12 @@ export default function LoginPage() {
             setIsCheckingAdmin(true)
 
             // Check if wallet has admin privileges
-            const hasAdminPrivileges = await checkAdminPrivileges(address!)
-            console.log("Admin Privileges: ", hasAdminPrivileges)
+            console.log("Admin Privileges: ", userHasOfficialPrivileges)
 
-            setIsAdmin(hasAdminPrivileges)
+            setIsAdmin(userHasOfficialPrivileges)
             setIsCheckingAdmin(false)
 
-            if (hasAdminPrivileges) {
+            if (userHasOfficialPrivileges) {
                 setShowPrivateKeyInput(true)
             } else {
                 // show error
