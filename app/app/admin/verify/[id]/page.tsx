@@ -341,7 +341,6 @@ export default function VerifyRequest({ params }: { params: Promise<{ id: string
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <FileText className="h-5 w-5 text-slate-400 mr-2" />
-                                                    {/* <span className="text-sm">land_title_document.pdf</span> */}
                                                 </div>
                                                 <Button onClick={handleDocumentDownload}
                                                     disabled={isProcessingImage}

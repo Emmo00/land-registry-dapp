@@ -179,7 +179,6 @@ export default function ViewRequest({ params }: { params: Promise<{ id: string }
                             <Tabs defaultValue="details">
                                 <TabsList className="mb-4">
                                     <TabsTrigger value="details">Request Details</TabsTrigger>
-                                    {/* <TabsTrigger value="documents">Documents</TabsTrigger> */}
                                 </TabsList>
 
                                 <TabsContent value="details" className="space-y-6">

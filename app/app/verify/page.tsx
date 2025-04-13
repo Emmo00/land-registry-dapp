@@ -296,19 +296,6 @@ export default function VerifyProofPage() {
                                             </div>
 
                                             <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-200">
-                                                {/* {searchResult.governmentVerification && (
-                                                    <Button variant="outline" className="flex-1">
-                                                        <FileText className="mr-2 h-4 w-4" />
-                                                        View Government Verification
-                                                    </Button>
-                                                )} */}
-
-                                                {/* {searchResult.verified && (
-                                                    <Button className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
-                                                        <Download className="mr-2 h-4 w-4" />
-                                                        Download Ownership Proof
-                                                    </Button>
-                                                )} */}
                                             </div>
                                         </CardContent>
                                     </Card>
