@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
-import { BaseError, useReadContract, useWatchContractEvent, useWriteContract } from "wagmi"
+import { BaseError, useAccount, useReadContract, useWatchContractEvent, useWriteContract } from "wagmi"
 import { LandRecordType, ProofGeneratedLog } from "@/types"
 import { formatDate, normalizeAcreAmount, parseDDAndConvertToDMS } from "@/utils/conversions"
 import { VerificationStatusToLabel } from "@/constants/abstract"
@@ -19,6 +19,7 @@ import { VerificationStatusToLabel } from "@/constants/abstract"
 
 export default function ViewRequest({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter()
+    const { address } = useAccount();
     let [request, setRequest] = useState<LandRecordType>();
     const [isLoading, setIsLoading] = useState(true);
     const [isGeneratingProof, setIsGeneratingProof] = useState(false);
@@ -237,7 +238,7 @@ export default function ViewRequest({ params }: { params: Promise<{ id: string }
 
                         <CardFooter className="flex flex-col text-left gap-3 pt-6 border-t border-slate-200">
                             {/* Generate Proof Button */}
-                            {VerificationStatusToLabel[request.status] === "approved" && (
+                            {(VerificationStatusToLabel[request.status] === "approved" && request.owner === address) && (
                                 <Button
                                     variant="outline"
                                     className="w-full bg-green-800 text-white sm:w-auto"

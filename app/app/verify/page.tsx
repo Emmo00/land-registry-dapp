@@ -11,21 +11,19 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { LandRecordType } from "@/types"
-import { form } from "viem/chains"
+import { LandRecordType, ProofUsedLog } from "@/types"
 import { normalizeAcreAmount, parseDDAndConvertToDMS } from "@/utils/conversions"
-import { useReadContract, useWriteContract } from "wagmi"
+import { useReadContract, useWatchContractEvent, useWriteContract } from "wagmi"
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/constants/contract"
 import { useToast } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster"
-import { readContract } from "viem/actions"
 
 type SearchFormData = {
     proof: string
 }
 
 
-export default function SearchPage() {
+export default function VerifyProofPage() {
     const [formData, setFormData] = useState<SearchFormData>({
         proof: "",
     })
@@ -33,27 +31,71 @@ export default function SearchPage() {
     const [isSearching, setIsSearching] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [hasSearched, setHasSearched] = useState(false);
-    const [proof, setProof] = useState<string | null>(null);
+    const [landID, setLandID] = useState<number | bigint | null>(null);
+    const { data: hash, error: writeContractError, isPending, writeContract } = useWriteContract();
 
-    const landRecord = useReadContract({
+    const { data: landRecord, refetch: refetchLandDetails } = useReadContract({
         address: CONTRACT_ADDRESS,
         abi: CONTRACT_ABI,
-        functionName: "getLandRecord",
-        args: [proof],
+        functionName: "getLandById",
+        args: [landID],
+        query: {
+            enabled: !!landID,
+        }
     })
 
     useEffect(() => {
-        console.log("landRecord", landRecord);
-        if (landRecord.isSuccess) {
-            const data = landRecord.data
-            if (data) {
-                setSearchResult(data as LandRecordType)
-            } else {
-                setSearchResult(null)
-            }
-            setIsSearching(false)
+        console.log("Land ID:", landID, "Land Record:", landRecord);
+        if (landRecord) {
+            setHasSearched(true);
+            setIsSearching(false);
+            setSearchResult(landRecord as LandRecordType);
+
+            // scroll to the results
+            setTimeout(() => {
+                scrollTo({
+                    top: document.documentElement.scrollHeight,
+                    behavior: "smooth",
+                });
+            }, 1000);
         }
     }, [landRecord]);
+
+    // watch write contract error
+    useEffect(() => {
+        if (writeContractError) {
+            console.error("Write contract error:", writeContractError);
+            setError("An error occurred while verifying the proof. Please try again.");
+            setIsSearching(false);
+        }
+    }, [writeContractError]);
+
+    // watch blockchain for proofUsed event to get the landID
+    useWatchContractEvent({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        eventName: "ProofUsed",
+        onError: (error) => {
+            console.error("Error watching proofUsed event:", error);
+        },
+        onLogs: (logs) => {
+            console.log("proofUsed event logs:", logs)
+            for (let i = 0; i < logs.length; i++) {
+                const log = logs[i] as unknown as ProofUsedLog;
+
+                if (log.args.proofHash !== formData.proof) {
+                    console.log("Proof hash does not match, skipping this log.")
+                    continue;
+                }
+
+                const landID = log.args.id;
+                setLandID(landID);
+                console.log("Land ID:", landID);
+                refetchLandDetails();
+                break;
+            }
+        }
+    });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target
@@ -63,11 +105,11 @@ export default function SearchPage() {
     const handleSearch = async (e?: React.FormEvent) => {
         if (e) e.preventDefault()
 
-
         // Reset states
         setError(null)
-        setIsSearching(true)
-        setHasSearched(true)
+        setIsSearching(true);
+
+        setHasSearched(false);
 
         // Validate that at least one field has input
         if (!formData.proof) {
@@ -83,7 +125,15 @@ export default function SearchPage() {
             setSearchResult(null)
             return;
         }
-        setProof(formData.proof)
+
+        console.log("verifying proof:", formData.proof)
+
+        writeContract({
+            address: CONTRACT_ADDRESS,
+            abi: CONTRACT_ABI,
+            functionName: "verifyProof",
+            args: [formData.proof],
+        });
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -241,7 +291,7 @@ export default function SearchPage() {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm text-slate-500">Land Size</p>
-                                                    <p className="font-medium text-slate-700">{(normalizeAcreAmount(searchResult.landSize))}</p>
+                                                    <p className="font-medium text-slate-700">{(normalizeAcreAmount(searchResult.landSize))} acres</p>
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <p className="text-sm text-slate-500">GPS Coordinates</p>

@@ -26,3 +26,11 @@ export type ProofGeneratedLog = {
         proofHash: string;
     }
 }
+
+export type ProofUsedLog = {
+    args: {
+        id: bigint;
+        proofHash: string;
+        verifier: Address;
+    }
+}
