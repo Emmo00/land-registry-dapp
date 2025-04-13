@@ -17,6 +17,7 @@ import { VerificationStatusToLabel } from "@/constants/abstract"
 import { decryptWithPrivateKey } from "@/utils/crypto"
 import { getExtensionFromFileName } from "@/utils/misc"
 import { Toaster } from "@/components/ui/toaster"
+import { BaseError } from "viem"
 
 
 export default function VerifyRequest({ params }: { params: Promise<{ id: string }> }) {
@@ -33,7 +34,7 @@ export default function VerifyRequest({ params }: { params: Promise<{ id: string
         functionName: "getLandById",
         args: [use(params).id],
     }).data as unknown as LandRecordType
-    const { writeContract } = useWriteContract();
+    const { writeContract, error: writeContractError } = useWriteContract();
     const { toast } = useToast()
 
     useEffect(() => {
@@ -43,6 +44,19 @@ export default function VerifyRequest({ params }: { params: Promise<{ id: string
             setIsLoading(false);
         }
     }, [landRequest])
+
+    // handle write contract error
+    useEffect(() => {
+        if (writeContractError) {
+            console.error("Error writing contract:", writeContractError);
+            toast({
+                title: "Error",
+                description: "Failed to process the request. Please try again." + (writeContractError as BaseError).shortMessage || writeContractError.message || "Unknown error",
+                variant: "destructive",
+            })
+            setIsSubmitting(false)
+        }
+    }, [writeContractError])
 
     const handleApprove = async () => {
         setIsSubmitting(true)
