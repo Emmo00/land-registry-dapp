@@ -8,7 +8,7 @@ import {
 } from 'wagmi/chains';
 import { http } from 'viem';
 
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = process.env.IS_LIVE === 'yes';
 
 export const config = getDefaultConfig({
     appName: 'Land Registry',
